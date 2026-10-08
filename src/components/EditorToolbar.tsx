@@ -1,13 +1,14 @@
-import { Copy, Download, EyeOff, Redo2, Undo2 } from 'lucide-react'
+import { Copy, Download, EyeOff, Redo2, Trash2, Undo2 } from 'lucide-react'
 import type { RefObject } from 'react'
 import { Brand } from './Brand'
 
 type EditorToolbarProps = {
   canHide: boolean
+  canRemove: boolean
   canUndo: boolean
   canRedo: boolean
-  canExport: boolean
   onHide: () => void
+  onRemove: () => void
   onUndo: () => void
   onRedo: () => void
   onCopy: () => void
@@ -18,10 +19,11 @@ type EditorToolbarProps = {
 
 export function EditorToolbar({
   canHide,
+  canRemove,
   canUndo,
   canRedo,
-  canExport,
   onHide,
+  onRemove,
   onUndo,
   onRedo,
   onCopy,
@@ -48,6 +50,12 @@ export function EditorToolbar({
           <EyeOff size={16} strokeWidth={2} aria-hidden="true" />
           Ocultar região
         </button>
+        {canRemove && (
+          <button type="button" className="btn btn--ghost" onClick={onRemove}>
+            <Trash2 size={16} strokeWidth={2} aria-hidden="true" />
+            Remover ocultação
+          </button>
+        )}
         <span className="tool-divider" aria-hidden="true" />
         <button
           type="button"
@@ -73,11 +81,11 @@ export function EditorToolbar({
 
       <div className="topbar__side topbar__side--end">
         <div className="tool-group tool-group--export" role="group" aria-label="Exportação">
-          <button type="button" className="btn btn--secondary" onClick={onDownload} disabled={!canExport}>
+          <button type="button" className="btn btn--secondary" onClick={onDownload}>
             <Download size={16} strokeWidth={2} aria-hidden="true" />
             Baixar PNG
           </button>
-          <button type="button" className="btn btn--primary" onClick={onCopy} disabled={!canExport}>
+          <button type="button" className="btn btn--primary" onClick={onCopy}>
             <Copy size={16} strokeWidth={2} aria-hidden="true" />
             Copiar imagem protegida
           </button>

@@ -5,8 +5,10 @@ import {
   applyRedaction,
   emptyHistory,
   exportPng,
+  redactionAtPoint,
   rectFromPoints,
   redo,
+  removeRedaction,
   renderImage,
   undo,
 } from './redaction'
@@ -18,7 +20,10 @@ import { Feedback } from './components/Feedback'
 import type { Status, StatusTone } from './components/Feedback'
 
 const MODIFIER_KEY = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent) ? '⌘' : 'Ctrl'
-type PendingAction = { kind: 'new' } | { kind: 'replace'; file: File }
+type PendingAction =
+  | { kind: 'new' }
+  | { kind: 'replace'; file: File }
+  | { kind: 'export'; format: 'copy' | 'download' }
 
 function pointOnCanvas(event: PointerEvent<HTMLCanvasElement>): Point {
   const canvas = event.currentTarget
@@ -42,10 +47,12 @@ export default function App() {
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
   const startPoint = useRef<Point | null>(null)
+  const startClientPoint = useRef<Point | null>(null)
   const loadSequence = useRef(0)
   const [image, setImage] = useState<ImageBitmap | null>(null)
   const [history, setHistory] = useState(emptyHistory)
   const [selection, setSelection] = useState<Rect | null>(null)
+  const [selectedRedaction, setSelectedRedaction] = useState<number | null>(null)
   const [draggingFile, setDraggingFile] = useState(false)
   const [status, setStatus] = useState<Status>({ text: '', tone: 'info' })
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
@@ -71,7 +78,9 @@ export default function App() {
       setImage(bitmap)
       setHistory(emptyHistory())
       setSelection(null)
+      setSelectedRedaction(null)
       startPoint.current = null
+      startClientPoint.current = null
       setMessage('Arraste sobre a imagem para marcar o que deseja ocultar.')
     } catch {
       if (request === loadSequence.current) {
@@ -85,7 +94,9 @@ export default function App() {
     setImage(null)
     setHistory(emptyHistory())
     setSelection(null)
+    setSelectedRedaction(null)
     startPoint.current = null
+    startClientPoint.current = null
     setDraggingFile(false)
     setStatus({ text: '', tone: 'info' })
   }, [])
@@ -109,6 +120,20 @@ export default function App() {
     cancelButtonRef.current?.focus()
   }, [pendingAction])
 
+  useEffect(() => {
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || dialogRef.current?.open) return
+      if (!startPoint.current && !selection && selectedRedaction === null) return
+      startPoint.current = null
+      startClientPoint.current = null
+      setSelection(null)
+      setSelectedRedaction(null)
+      setMessage('Seleção cancelada.')
+    }
+    window.addEventListener('keydown', onEscape)
+    return () => window.removeEventListener('keydown', onEscape)
+  }, [selection, selectedRedaction, setMessage])
+
   const cancelPendingAction = () => {
     dialogRef.current?.close()
     setPendingAction(null)
@@ -127,9 +152,13 @@ export default function App() {
     if (action.kind === 'new') {
       clearEditor()
       window.requestAnimationFrame(() => chooseButtonRef.current?.focus())
-    } else {
+    } else if (action.kind === 'replace') {
       void loadImage(action.file)
       window.requestAnimationFrame(() => newImageButtonRef.current?.focus())
+    } else {
+      if (action.format === 'copy') void performCopy()
+      else void performDownload()
+      window.requestAnimationFrame(() => returnFocusRef.current?.focus())
     }
   }
 
@@ -172,6 +201,22 @@ export default function App() {
 
     try {
       renderImage(canvas, image, history.applied)
+      if (selectedRedaction !== null) {
+        const rect = history.applied[selectedRedaction]
+        const context = canvas.getContext('2d')
+        if (rect && context) {
+          const displayWidth = canvas.getBoundingClientRect().width
+          const scale = displayWidth > 0 ? canvas.width / displayWidth : 1
+          context.save()
+          context.strokeStyle = '#ffffff'
+          context.lineWidth = 3 * scale
+          context.strokeRect(rect.x, rect.y, rect.width, rect.height)
+          context.strokeStyle = '#0071e3'
+          context.lineWidth = 1.5 * scale
+          context.strokeRect(rect.x, rect.y, rect.width, rect.height)
+          context.restore()
+        }
+      }
       if (selection) {
         const context = canvas.getContext('2d')
         if (!context) return
@@ -195,7 +240,7 @@ export default function App() {
     } catch {
       setMessage('Não foi possível exibir a imagem neste navegador.', 'error')
     }
-  }, [image, history.applied, selection, setMessage])
+  }, [image, history.applied, selection, selectedRedaction, setMessage])
 
   const onDragOver = (event: DragEvent<HTMLElement>) => {
     event.preventDefault()
@@ -218,7 +263,9 @@ export default function App() {
     if (!image || event.button !== 0) return
     event.currentTarget.setPointerCapture(event.pointerId)
     startPoint.current = pointOnCanvas(event)
+    startClientPoint.current = { x: event.clientX, y: event.clientY }
     setSelection(null)
+    setSelectedRedaction(null)
   }
 
   const onPointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -228,6 +275,17 @@ export default function App() {
 
   const onPointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
     if (!image || !startPoint.current) return
+    const clientStart = startClientPoint.current
+    const isClick = clientStart && Math.hypot(event.clientX - clientStart.x, event.clientY - clientStart.y) < 4
+    startClientPoint.current = null
+    if (isClick) {
+      const index = redactionAtPoint(history.applied, pointOnCanvas(event))
+      startPoint.current = null
+      setSelection(null)
+      setSelectedRedaction(index)
+      if (index !== null) setMessage('Ocultação selecionada. Use “Remover ocultação” para removê-la.')
+      return
+    }
     const rect = rectFromPoints(startPoint.current, pointOnCanvas(event), image.width, image.height)
     startPoint.current = null
     setSelection(rect)
@@ -236,6 +294,7 @@ export default function App() {
 
   const onPointerCancel = () => {
     startPoint.current = null
+    startClientPoint.current = null
     setSelection(null)
   }
 
@@ -243,21 +302,31 @@ export default function App() {
     if (!selection) return
     setHistory((current) => applyRedaction(current, selection))
     setSelection(null)
+    setSelectedRedaction(null)
     setMessage('Região ocultada. Revise a imagem antes de compartilhar.')
+  }
+
+  const onRemove = () => {
+    if (selectedRedaction === null) return
+    setHistory((current) => removeRedaction(current, selectedRedaction))
+    setSelectedRedaction(null)
+    setMessage('Ocultação removida. Você pode desfazer esta ação.')
   }
 
   const onUndo = () => {
     setHistory(undo)
-    setMessage('Última ocultação desfeita.')
+    setSelectedRedaction(null)
+    setMessage('Última edição desfeita.')
   }
 
   const onRedo = () => {
     setHistory(redo)
-    setMessage('Ocultação refeita.')
+    setSelectedRedaction(null)
+    setMessage('Edição refeita.')
   }
 
-  const onCopy = async () => {
-    if (!image || history.applied.length === 0) return
+  const performCopy = async () => {
+    if (!image) return
     if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
       setMessage('Este navegador não permite copiar imagens aqui. Use “Baixar PNG”.', 'error')
       return
@@ -271,8 +340,8 @@ export default function App() {
     }
   }
 
-  const onDownload = async () => {
-    if (!image || history.applied.length === 0) return
+  const performDownload = async () => {
+    if (!image) return
     try {
       const png = await exportPng(image, history.applied)
       const url = URL.createObjectURL(png)
@@ -289,7 +358,25 @@ export default function App() {
     }
   }
 
-  const hasRedactions = history.applied.length > 0
+  const onCopy = () => {
+    if (!image) return
+    if (history.applied.length === 0) {
+      returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      setPendingAction({ kind: 'export', format: 'copy' })
+    } else {
+      void performCopy()
+    }
+  }
+
+  const onDownload = () => {
+    if (!image) return
+    if (history.applied.length === 0) {
+      returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      setPendingAction({ kind: 'export', format: 'download' })
+    } else {
+      void performDownload()
+    }
+  }
 
   return (
     <div className="app" onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
@@ -301,14 +388,15 @@ export default function App() {
         <>
           <EditorToolbar
             canHide={selection !== null}
-            canUndo={hasRedactions}
-            canRedo={history.undone.length > 0}
-            canExport={hasRedactions}
+            canRemove={selectedRedaction !== null}
+            canUndo={history.past.length > 0}
+            canRedo={history.future.length > 0}
             onHide={onHide}
+            onRemove={onRemove}
             onUndo={onUndo}
             onRedo={onRedo}
-            onCopy={() => { void onCopy() }}
-            onDownload={() => { void onDownload() }}
+            onCopy={onCopy}
+            onDownload={onDownload}
             onNewImage={onNewImage}
             newImageButtonRef={newImageButtonRef}
           />
@@ -368,23 +456,29 @@ export default function App() {
 
       <dialog
         ref={dialogRef}
-        className="discard-dialog"
-        aria-labelledby="discard-title"
-        aria-describedby="discard-description"
+        className="confirmation-dialog"
+        aria-labelledby="confirmation-title"
+        aria-describedby="confirmation-description"
         onCancel={(event) => { event.preventDefault(); cancelPendingAction() }}
       >
-        <h2 id="discard-title">Descartar edição?</h2>
-        <p id="discard-description">
-          {pendingAction?.kind === 'new'
-            ? 'As tarjas aplicadas serão descartadas ao voltar para o início.'
-            : 'As tarjas aplicadas serão descartadas ao substituir esta imagem.'}
+        <h2 id="confirmation-title">
+          {pendingAction?.kind === 'export' ? 'Revisar imagem antes de compartilhar' : 'Descartar edição?'}
+        </h2>
+        <p id="confirmation-description">
+          {pendingAction?.kind === 'export'
+            ? 'Esta imagem ainda não possui informações ocultadas. Deseja continuar mesmo assim?'
+            : pendingAction?.kind === 'new'
+              ? 'As tarjas aplicadas serão descartadas ao voltar para o início.'
+              : 'As tarjas aplicadas serão descartadas ao substituir esta imagem.'}
         </p>
-        <div className="discard-dialog__actions">
+        <div className="confirmation-dialog__actions">
           <button ref={cancelButtonRef} type="button" className="btn btn--secondary" onClick={cancelPendingAction}>
-            Cancelar
+            {pendingAction?.kind === 'export' ? 'Voltar à edição' : 'Cancelar'}
           </button>
           <button type="button" className="btn btn--primary" onClick={confirmPendingAction}>
-            {pendingAction?.kind === 'new' ? 'Descartar e voltar' : 'Descartar e substituir'}
+            {pendingAction?.kind === 'export'
+              ? 'Continuar mesmo assim'
+              : pendingAction?.kind === 'new' ? 'Descartar e voltar' : 'Descartar e substituir'}
           </button>
         </div>
       </dialog>
