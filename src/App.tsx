@@ -12,7 +12,7 @@ import {
   renderImage,
   undo,
 } from './redaction'
-import type { Point, Rect } from './redaction'
+import type { History, Point, Rect } from './redaction'
 import { Brand } from './components/Brand'
 import { EditorToolbar } from './components/EditorToolbar'
 import { EmptyState } from './components/EmptyState'
@@ -22,7 +22,7 @@ import type { Status, StatusTone } from './components/Feedback'
 const MODIFIER_KEY = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent) ? '⌘' : 'Ctrl'
 type PendingAction =
   | { kind: 'new' }
-  | { kind: 'replace'; file: File }
+  | { kind: 'replace'; bitmap: ImageBitmap }
   | { kind: 'export'; format: 'copy' | 'download' }
 
 function pointOnCanvas(event: PointerEvent<HTMLCanvasElement>): Point {
@@ -51,68 +51,76 @@ export default function App() {
   const loadSequence = useRef(0)
   const [image, setImage] = useState<ImageBitmap | null>(null)
   const [history, setHistory] = useState(emptyHistory)
+  const historyRef = useRef(history)
   const [selection, setSelection] = useState<Rect | null>(null)
   const [selectedRedaction, setSelectedRedaction] = useState<number | null>(null)
   const [draggingFile, setDraggingFile] = useState(false)
   const [status, setStatus] = useState<Status>({ text: '', tone: 'info' })
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
+  const pendingActionRef = useRef<PendingAction | null>(null)
 
   const setMessage = useCallback((text: string, tone: StatusTone = 'info') => {
     setStatus({ text, tone })
   }, [])
 
-  const loadImage = useCallback(async (file: File) => {
-    if (!isSupportedImage(file)) {
-      setMessage('Este arquivo não é uma imagem compatível. Arquivos SVG não são aceitos.', 'error')
-      return
-    }
+  const updateHistory = useCallback((update: (current: History) => History) => {
+    const next = update(historyRef.current)
+    historyRef.current = next
+    setHistory(next)
+  }, [])
 
-    const request = ++loadSequence.current
-    setMessage('Abrindo imagem…')
-    try {
-      const bitmap = await createImageBitmap(file)
-      if (request !== loadSequence.current) {
-        bitmap.close()
-        return
-      }
-      setImage(bitmap)
-      setHistory(emptyHistory())
-      setSelection(null)
-      setSelectedRedaction(null)
-      startPoint.current = null
-      startClientPoint.current = null
-      setMessage('Arraste sobre a imagem para marcar o que deseja ocultar.')
-    } catch {
-      if (request === loadSequence.current) {
-        setMessage('Não foi possível abrir esta imagem.', 'error')
-      }
-    }
-  }, [setMessage])
+  const showPendingAction = useCallback((action: PendingAction) => {
+    loadSequence.current += 1
+    pendingActionRef.current = action
+    setPendingAction(action)
+  }, [])
+
+  const commitImage = useCallback((bitmap: ImageBitmap) => {
+    setImage(bitmap)
+    updateHistory(emptyHistory)
+    setSelection(null)
+    setSelectedRedaction(null)
+    startPoint.current = null
+    startClientPoint.current = null
+    setMessage('Arraste sobre a imagem para marcar o que deseja ocultar.')
+  }, [setMessage, updateHistory])
 
   const clearEditor = useCallback(() => {
     loadSequence.current += 1
     setImage(null)
-    setHistory(emptyHistory())
+    updateHistory(emptyHistory)
     setSelection(null)
     setSelectedRedaction(null)
     startPoint.current = null
     startClientPoint.current = null
     setDraggingFile(false)
     setStatus({ text: '', tone: 'info' })
-  }, [])
+  }, [updateHistory])
 
-  const requestImage = useCallback((file: File) => {
+  const requestImage = useCallback(async (file: File) => {
+    if (pendingActionRef.current) return
     if (!isSupportedImage(file)) {
       setMessage('Este arquivo não é uma imagem compatível. Arquivos SVG não são aceitos.', 'error')
       return
     }
-    if (history.applied.length > 0) {
-      returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-      setPendingAction({ kind: 'replace', file })
-    } else {
-      void loadImage(file)
+    const request = ++loadSequence.current
+    setMessage('Abrindo imagem…')
+    try {
+      const bitmap = await createImageBitmap(file)
+      if (request !== loadSequence.current || pendingActionRef.current) {
+        bitmap.close()
+        return
+      }
+      if (historyRef.current.applied.length > 0) {
+        returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+        showPendingAction({ kind: 'replace', bitmap })
+      } else {
+        commitImage(bitmap)
+      }
+    } catch {
+      if (request === loadSequence.current) setMessage('Não foi possível abrir esta imagem.', 'error')
     }
-  }, [history.applied.length, loadImage, setMessage])
+  }, [commitImage, setMessage, showPendingAction])
 
   useEffect(() => {
     if (!pendingAction || !dialogRef.current) return
@@ -136,6 +144,9 @@ export default function App() {
 
   const cancelPendingAction = () => {
     dialogRef.current?.close()
+    const action = pendingActionRef.current
+    if (action?.kind === 'replace') action.bitmap.close()
+    pendingActionRef.current = null
     setPendingAction(null)
     window.requestAnimationFrame(() => {
       const previous = returnFocusRef.current
@@ -145,15 +156,16 @@ export default function App() {
   }
 
   const confirmPendingAction = () => {
-    const action = pendingAction
+    const action = pendingActionRef.current
     if (!action) return
     dialogRef.current?.close()
+    pendingActionRef.current = null
     setPendingAction(null)
     if (action.kind === 'new') {
       clearEditor()
       window.requestAnimationFrame(() => chooseButtonRef.current?.focus())
     } else if (action.kind === 'replace') {
-      void loadImage(action.file)
+      commitImage(action.bitmap)
       window.requestAnimationFrame(() => newImageButtonRef.current?.focus())
     } else {
       if (action.format === 'copy') void performCopy()
@@ -163,19 +175,19 @@ export default function App() {
   }
 
   const onNewImage = () => {
-    if (history.applied.length === 0) {
+    if (historyRef.current.applied.length === 0) {
       clearEditor()
       window.requestAnimationFrame(() => chooseButtonRef.current?.focus())
       return
     }
     returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    setPendingAction({ kind: 'new' })
+    showPendingAction({ kind: 'new' })
   }
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0]
     event.currentTarget.value = ''
-    if (file) requestImage(file)
+    if (file) void requestImage(file)
   }
 
   useEffect(() => {
@@ -186,13 +198,17 @@ export default function App() {
       const file = item?.getAsFile()
       if (!file) return
       event.preventDefault()
-      requestImage(file)
+      void requestImage(file)
     }
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)
   }, [requestImage])
 
-  useEffect(() => () => { loadSequence.current += 1 }, [])
+  useEffect(() => () => {
+    loadSequence.current += 1
+    const action = pendingActionRef.current
+    if (action?.kind === 'replace') action.bitmap.close()
+  }, [])
   useEffect(() => () => { image?.close() }, [image])
 
   useEffect(() => {
@@ -255,7 +271,7 @@ export default function App() {
     event.preventDefault()
     setDraggingFile(false)
     const file = Array.from(event.dataTransfer.files).find(isSupportedImage)
-    if (file) requestImage(file)
+    if (file) void requestImage(file)
     else setMessage('Solte um arquivo de imagem compatível. Arquivos SVG não são aceitos.', 'error')
   }
 
@@ -300,7 +316,7 @@ export default function App() {
 
   const onHide = () => {
     if (!selection) return
-    setHistory((current) => applyRedaction(current, selection))
+    updateHistory((current) => applyRedaction(current, selection))
     setSelection(null)
     setSelectedRedaction(null)
     setMessage('Região ocultada. Revise a imagem antes de compartilhar.')
@@ -308,19 +324,19 @@ export default function App() {
 
   const onRemove = () => {
     if (selectedRedaction === null) return
-    setHistory((current) => removeRedaction(current, selectedRedaction))
+    updateHistory((current) => removeRedaction(current, selectedRedaction))
     setSelectedRedaction(null)
     setMessage('Ocultação removida. Você pode desfazer esta ação.')
   }
 
   const onUndo = () => {
-    setHistory(undo)
+    updateHistory(undo)
     setSelectedRedaction(null)
     setMessage('Última edição desfeita.')
   }
 
   const onRedo = () => {
-    setHistory(redo)
+    updateHistory(redo)
     setSelectedRedaction(null)
     setMessage('Edição refeita.')
   }
@@ -334,7 +350,7 @@ export default function App() {
     try {
       const png = exportPng(image, history.applied)
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
-      setMessage('Imagem protegida copiada.', 'success')
+      setMessage(history.applied.length > 0 ? 'Imagem com ocultações copiada.' : 'Imagem copiada sem ocultações.', 'success')
     } catch {
       setMessage('Não foi possível copiar. Verifique a permissão da área de transferência ou use “Baixar PNG”.', 'error')
     }
@@ -342,19 +358,25 @@ export default function App() {
 
   const performDownload = async () => {
     if (!image) return
+    let url: string | null = null
+    let link: HTMLAnchorElement | null = null
     try {
       const png = await exportPng(image, history.applied)
-      const url = URL.createObjectURL(png)
-      const link = document.createElement('a')
+      url = URL.createObjectURL(png)
+      link = document.createElement('a')
       link.href = url
       link.download = 'screenshot-protegido.png'
       document.body.append(link)
       link.click()
-      link.remove()
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-      setMessage('PNG protegido salvo.', 'success')
+      setMessage(history.applied.length > 0 ? 'PNG com ocultações salvo.' : 'PNG salvo sem ocultações.', 'success')
     } catch {
       setMessage('Não foi possível gerar o PNG desta imagem.', 'error')
+    } finally {
+      link?.remove()
+      if (url) {
+        const completedUrl = url
+        window.setTimeout(() => URL.revokeObjectURL(completedUrl), 1000)
+      }
     }
   }
 
@@ -362,7 +384,7 @@ export default function App() {
     if (!image) return
     if (history.applied.length === 0) {
       returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-      setPendingAction({ kind: 'export', format: 'copy' })
+      showPendingAction({ kind: 'export', format: 'copy' })
     } else {
       void performCopy()
     }
@@ -372,7 +394,7 @@ export default function App() {
     if (!image) return
     if (history.applied.length === 0) {
       returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-      setPendingAction({ kind: 'export', format: 'download' })
+      showPendingAction({ kind: 'export', format: 'download' })
     } else {
       void performDownload()
     }
