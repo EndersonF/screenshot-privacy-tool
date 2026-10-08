@@ -6,6 +6,6 @@ As decisões de produto e o escopo inicial estão em [PRODUCT.md](PRODUCT.md). O
 
 ## Executar localmente
 
-Requer Node.js compatível com Vite. Execute `npm install` e depois `npm run dev`. Abra o endereço local mostrado pelo Vite em Chrome ou Edge. Para verificar o projeto, execute `npm run build` e `npm run lint`.
+Requer Node.js compatível com Vite. Execute `npm install` e depois `npm run dev`. Abra o endereço local mostrado pelo Vite em Chrome ou Edge. Para verificar o projeto, execute `npm run build`, `npm run lint` e `npm test` (testes de navegador com Chrome instalado).
 
 A imagem é processada no navegador e não é enviada para servidores. A cópia de PNG para o clipboard requer uma página em contexto seguro, como `localhost` ou HTTPS.

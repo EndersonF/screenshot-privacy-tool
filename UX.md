@@ -22,7 +22,7 @@ Permitir que uma pessoa revise um screenshot, oculte manualmente as regiões que
 2. Revisar a imagem exibida e arrastar o mouse para marcar uma região.
 3. Conferir a seleção visível e clicar em **Ocultar região**, ou usar Escape para cancelá-la.
 4. Repetir a seleção quando necessário. É possível selecionar uma tarja aplicada e removê-la individualmente; aplicar e remover tarjas integram desfazer/refazer.
-5. Revisar a imagem resultante e escolher **Copiar imagem** ou **Baixar PNG**. Se não houver tarjas, mostrar antes um aviso de revisão com as opções **Voltar** e **Continuar**.
+5. Revisar a imagem resultante e escolher **Copiar imagem protegida** ou **Baixar PNG**. Se não houver tarjas, mostrar antes um aviso de revisão com as opções **Voltar à edição** e **Continuar mesmo assim**.
 
 No editor, **Nova imagem** encerra a edição e retorna ao estado vazio. Ao carregar outra imagem, o fluxo anterior é encerrado. Se houver uma imagem editada, ambas as ações requerem confirmação antes de descartar as alterações.
 
@@ -36,41 +36,32 @@ No editor, **Nova imagem** encerra a edição e retorna ao estado vazio. Ao carr
 | Carregamento e falha de entrada | Mensagem simples de abertura ou erro; a imagem anterior permanece se a nova falhar. |
 | Imagem pronta | Canvas com a imagem e controles de edição. |
 | Seleção pendente | Área marcada visualmente; a ocultação só é aplicada pelo botão **Ocultar região**. |
-| Tarjas aplicadas | Tarjas pretas visíveis; desfazer/refazer disponível para aplicações. |
-| Saída | Cópia e download em PNG disponíveis somente quando há ao menos uma tarja. |
+| Tarjas aplicadas | Tarjas pretas visíveis; clique seleciona a tarja superior em áreas sobrepostas e permite removê-la. Aplicação e remoção integram desfazer/refazer. |
+| Saída | Cópia e download em PNG disponíveis; sem tarjas, um aviso de revisão precede a exportação. |
 | Troca ou encerramento | **Nova imagem** volta ao estado vazio; colar ou arrastar substitui a imagem. Havendo tarjas aplicadas, ambas as ações pedem confirmação antes de descartar a edição. |
 | Feedback e privacidade | Mensagem de status e aviso permanente de processamento local. |
 
 ### Estados aprovados a implementar
 
-- Seleção pendente com cancelamento por Escape.
-- Tarja aplicada selecionada, com possibilidade de removê-la individualmente.
-- Confirmação de revisão antes de copiar ou baixar uma imagem sem tarjas.
-- Feedback de sucesso discreto e erro objetivo com caminho alternativo quando uma saída falhar.
+- Em falha de download, oferecer a cópia como caminho alternativo quando disponível.
 
 ## 5. Seleção e confirmação
 
-**Estado atual:** o arraste no canvas cria uma seleção visível, sem ocultar os pixels imediatamente. O botão **Ocultar região** confirma a ação. Iniciar outro arraste substitui a seleção pendente.
-
-**A implementar:** Escape cancela a seleção ativa sem criar ou remover tarjas. Ao permitir selecionar tarjas aplicadas, a seleção pendente deve permanecer distinguível delas.
+**Estado atual:** o arraste no canvas cria uma seleção visível, sem ocultar os pixels imediatamente. O botão **Ocultar região** confirma a ação. Iniciar outro arraste substitui a seleção pendente. Escape cancela a seleção ativa sem alterar as tarjas ou o histórico; se houver um diálogo aberto, ele recebe o Escape primeiro. A seleção pendente tem indicação visual distinta da tarja aplicada selecionada.
 
 ## 6. Gerenciamento de tarjas
 
-**Estado atual:** é possível aplicar várias tarjas, mas não selecionar nem remover uma tarja específica por clique.
-
-**A implementar:** clicar em uma tarja aplicada permite selecioná-la; a seleção deve ser perceptível na interface e oferecer um controle claro para removê-la individualmente. A remoção altera somente a tarja escolhida. Escape cancela a seleção ativa. Qualquer indicação visual de seleção serve à edição e não integra a imagem exportada.
+**Estado atual:** é possível aplicar várias tarjas. Clicar em uma tarja permite selecioná-la com contorno discreto e usar **Remover ocultação**; a remoção altera somente a tarja escolhida. Em regiões sobrepostas, o clique seleciona a última tarja aplicada naquela posição. Escape cancela a seleção ativa. A indicação visual de seleção serve à edição e não integra a imagem exportada.
 
 ## 7. Desfazer e refazer
 
-**Estado atual:** desfazer remove a última tarja aplicada; refazer a restaura. Aplicar uma nova tarja após desfazer limpa o histórico de refazer. Trocar de imagem reinicia o histórico.
-
-**A implementar:** a remoção individual de uma tarja também deve entrar no histórico. Desfazer reverte a última aplicação ou remoção; refazer reaplica essa mesma ação. Uma nova edição após desfazer substitui o caminho de refazer. Ao substituir a imagem, o histórico anterior deve ser limpo.
+**Estado atual:** desfazer reverte a última aplicação ou remoção de tarja; refazer reaplica essa mesma edição. Uma nova edição após desfazer limpa o histórico de refazer. Trocar de imagem reinicia o histórico.
 
 ## 8. Copiar, baixar e avisos
 
-**Estado atual:** copiar e baixar PNG usam uma composição em canvas separada da imagem original; as tarjas são incorporadas aos pixels exportados. Copiar é a ação visual principal e baixar PNG é secundária. Ambas ficam indisponíveis sem tarjas. Há mensagens simples de sucesso ou erro.
+**Estado atual:** copiar e baixar PNG usam uma composição em canvas separada da imagem original; as tarjas são incorporadas aos pixels exportados. Copiar é a ação visual principal e baixar PNG é secundária. As duas ações ficam disponíveis sem tarjas, mas nesse caso abrem um aviso de revisão com **Voltar à edição** e **Continuar mesmo assim**. O aviso informa que nenhuma região foi ocultada, sem afirmar que uma imagem com tarjas esteja completamente segura. Há feedback discreto de sucesso e mensagens de erro; em falha de cópia, a mensagem oferece baixar PNG como alternativa.
 
-**A implementar:** as duas ações ficam disponíveis mesmo sem tarjas, mas nesse caso devem abrir um aviso de revisão antes da saída, com **Voltar** e **Continuar**. O aviso informa que nenhuma região foi ocultada, sem afirmar que uma imagem com tarjas esteja completamente segura. Sucesso deve ter feedback discreto; em falha de cópia, oferecer baixar PNG como caminho alternativo e, em falha de download, oferecer a cópia quando disponível.
+**A implementar:** em falha de download, oferecer a cópia como caminho alternativo quando disponível.
 
 ## 9. Troca de imagem
 

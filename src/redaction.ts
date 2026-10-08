@@ -2,9 +2,9 @@ export type Point = { x: number; y: number }
 
 export type Rect = { x: number; y: number; width: number; height: number }
 
-export type History = { applied: Rect[]; undone: Rect[] }
+export type History = { applied: Rect[]; past: Rect[][]; future: Rect[][] }
 
-export const emptyHistory = (): History => ({ applied: [], undone: [] })
+export const emptyHistory = (): History => ({ applied: [], past: [], future: [] })
 
 export function rectFromPoints(start: Point, end: Point, width: number, height: number): Rect | null {
   const left = Math.max(0, Math.floor(Math.min(start.x, end.x)))
@@ -17,19 +17,44 @@ export function rectFromPoints(start: Point, end: Point, width: number, height: 
 }
 
 export function applyRedaction(history: History, rect: Rect): History {
-  return { applied: [...history.applied, rect], undone: [] }
+  return { applied: [...history.applied, rect], past: [...history.past, history.applied], future: [] }
+}
+
+export function removeRedaction(history: History, index: number): History {
+  if (index < 0 || index >= history.applied.length) return history
+  return {
+    applied: history.applied.filter((_, currentIndex) => currentIndex !== index),
+    past: [...history.past, history.applied],
+    future: [],
+  }
+}
+
+export function redactionAtPoint(redactions: Rect[], point: Point): number | null {
+  for (let index = redactions.length - 1; index >= 0; index -= 1) {
+    const rect = redactions[index]
+    if (point.x >= rect.x && point.x < rect.x + rect.width && point.y >= rect.y && point.y < rect.y + rect.height) {
+      return index
+    }
+  }
+  return null
 }
 
 export function undo(history: History): History {
-  if (history.applied.length === 0) return history
-  const rect = history.applied[history.applied.length - 1]
-  return { applied: history.applied.slice(0, -1), undone: [...history.undone, rect] }
+  if (history.past.length === 0) return history
+  return {
+    applied: history.past[history.past.length - 1],
+    past: history.past.slice(0, -1),
+    future: [history.applied, ...history.future],
+  }
 }
 
 export function redo(history: History): History {
-  if (history.undone.length === 0) return history
-  const rect = history.undone[history.undone.length - 1]
-  return { applied: [...history.applied, rect], undone: history.undone.slice(0, -1) }
+  if (history.future.length === 0) return history
+  return {
+    applied: history.future[0],
+    past: [...history.past, history.applied],
+    future: history.future.slice(1),
+  }
 }
 
 export function renderImage(canvas: HTMLCanvasElement, image: ImageBitmap, redactions: Rect[]): void {
