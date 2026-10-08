@@ -5,6 +5,8 @@ declare global {
   interface Window {
     __copyBlob?: Blob
     __downloadBlob?: Blob
+    __deferredDecodes?: Array<() => void>
+    __revokedUrls?: string[]
   }
 }
 
@@ -78,6 +80,21 @@ async function captureExports(page: Page) {
       return createObjectURL(blob)
     }
   })
+}
+
+async function deferImageDecodes(page: Page) {
+  await page.evaluate(() => {
+    const original = window.createImageBitmap.bind(window)
+    const pending: Array<() => void> = []
+    window.__deferredDecodes = pending
+    window.createImageBitmap = (source) => new Promise<ImageBitmap>((resolve, reject) => {
+      pending.push(() => { void original(source).then(resolve, reject) })
+    })
+  })
+}
+
+async function releaseDecode(page: Page, index: number) {
+  await page.evaluate((currentIndex) => window.__deferredDecodes![currentIndex](), index)
 }
 
 test('remove a primeira tarja, preserva a segunda e integra desfazer/refazer', async ({ page }) => {
@@ -180,6 +197,7 @@ test('avisa antes de cada saída sem tarjas e executa somente a ação escolhida
   await page.getByRole('button', { name: 'Copiar imagem protegida' }).click()
   await page.getByRole('button', { name: 'Continuar mesmo assim' }).click()
   await expect.poll(() => page.evaluate(() => window.__copyBlob?.size ?? 0)).toBeGreaterThan(0)
+  await expect(page.getByRole('status')).toHaveText('Imagem copiada sem ocultações.')
   expect(await page.evaluate(() => window.__downloadBlob?.size ?? 0)).toBe(0)
 
   await page.getByRole('button', { name: 'Baixar PNG' }).click()
@@ -190,6 +208,7 @@ test('avisa antes de cada saída sem tarjas e executa somente a ação escolhida
   await page.getByRole('button', { name: 'Baixar PNG' }).click()
   await page.getByRole('button', { name: 'Continuar mesmo assim' }).click()
   await expect.poll(() => page.evaluate(() => window.__downloadBlob?.size ?? 0)).toBeGreaterThan(0)
+  await expect(page.getByRole('status')).toHaveText('PNG salvo sem ocultações.')
 })
 
 test('exporta tarjas nos pixels sem aviso e limpa o estado ao substituir a imagem', async ({ page }) => {
@@ -209,6 +228,7 @@ test('exporta tarjas nos pixels sem aviso e limpa o estado ao substituir a image
   await page.getByRole('button', { name: 'Copiar imagem protegida' }).click()
   await expect(page.getByRole('dialog')).not.toBeVisible()
   await expect.poll(() => page.evaluate(() => window.__copyBlob?.size ?? 0)).toBeGreaterThan(0)
+  await expect(page.getByRole('status')).toHaveText('Imagem com ocultações copiada.')
   const protectedPixel = await page.evaluate(async () => {
     const bitmap = await createImageBitmap(window.__copyBlob!)
     const canvas = document.createElement('canvas')
@@ -223,6 +243,7 @@ test('exporta tarjas nos pixels sem aviso e limpa o estado ao substituir a image
   await page.getByRole('button', { name: 'Baixar PNG' }).click()
   await expect(page.getByRole('dialog')).not.toBeVisible()
   await expect.poll(() => page.evaluate(() => window.__downloadBlob?.size ?? 0)).toBeGreaterThan(0)
+  await expect(page.getByRole('status')).toHaveText('PNG com ocultações salvo.')
   const downloadedPixel = await page.evaluate(async () => {
     const bitmap = await createImageBitmap(window.__downloadBlob!)
     const canvas = document.createElement('canvas')
@@ -250,4 +271,72 @@ test('exporta tarjas nos pixels sem aviso e limpa o estado ao substituir a image
   await page.setViewportSize({ width: 375, height: 800 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   expect(consoleErrors).toEqual([])
+})
+
+test('tarja aplicada durante a decodificação exige confirmação e cancelar preserva a edição', async ({ page }) => {
+  await page.goto('/')
+  await loadByFilePicker(page)
+  await deferImageDecodes(page)
+
+  await pasteImage(page, 80, 60, '#00aa66')
+  await dragRegion(page, 0.1, 0.1, 0.35, 0.35)
+  await page.getByRole('button', { name: 'Ocultar região' }).click()
+  await dragRegion(page, 0.6, 0.6, 0.8, 0.8)
+  await releaseDecode(page, 0)
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('button', { name: 'Cancelar' }).click()
+
+  await expect(page.locator('canvas')).toHaveAttribute('width', '120')
+  expect(await pixel(page, 24, 18)).toEqual([0, 0, 0, 255])
+  await expect(page.getByRole('button', { name: 'Ocultar região' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Desfazer' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Desfazer' }).click()
+  expect((await pixel(page, 24, 18))[0]).toBeGreaterThan(200)
+  await page.getByRole('button', { name: 'Refazer' }).click()
+  expect(await pixel(page, 24, 18)).toEqual([0, 0, 0, 255])
+
+  await pasteImage(page, 80, 60, '#00aa66')
+  await releaseDecode(page, 1)
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('button', { name: 'Descartar e substituir' }).click()
+  await expect(page.locator('canvas')).toHaveAttribute('width', '80')
+  await expect(page.getByRole('button', { name: 'Desfazer' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Ocultar região' })).toBeDisabled()
+})
+
+test('substituições rápidas usam somente a imagem solicitada por último', async ({ page }) => {
+  await page.goto('/')
+  await loadByFilePicker(page)
+  await deferImageDecodes(page)
+
+  await pasteImage(page, 80, 60, '#00aa66')
+  await pasteImage(page, 60, 40, '#4455ee')
+  expect(await page.evaluate(() => window.__deferredDecodes?.length)).toBe(2)
+  await releaseDecode(page, 1)
+  await expect(page.locator('canvas')).toHaveAttribute('width', '60')
+  await releaseDecode(page, 0)
+  await expect(page.locator('canvas')).toHaveAttribute('width', '60')
+  await expect(page.getByRole('dialog')).not.toBeVisible()
+  await expect(page.getByRole('button', { name: 'Desfazer' })).toBeDisabled()
+})
+
+test('revoga a URL temporária mesmo se o download falhar após sua criação', async ({ page }) => {
+  await page.goto('/')
+  await loadByFilePicker(page)
+  await dragRegion(page, 0.1, 0.1, 0.35, 0.35)
+  await page.getByRole('button', { name: 'Ocultar região' }).click()
+  await page.evaluate(() => {
+    window.__revokedUrls = []
+    const revoke = URL.revokeObjectURL.bind(URL)
+    URL.revokeObjectURL = (url) => {
+      window.__revokedUrls!.push(url)
+      revoke(url)
+    }
+    HTMLAnchorElement.prototype.click = () => { throw new Error('Falha simulada no download') }
+  })
+
+  await page.getByRole('button', { name: 'Baixar PNG' }).click()
+  await expect(page.getByRole('status')).toHaveText('Não foi possível gerar o PNG desta imagem.')
+  await expect.poll(() => page.evaluate(() => window.__revokedUrls?.length ?? 0)).toBe(1)
+  await expect(page.locator('a[download]')).toHaveCount(0)
 })
