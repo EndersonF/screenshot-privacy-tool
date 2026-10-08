@@ -1,6 +1,6 @@
 # UX do MVP 0.1
 
-Este documento consolida as decisões de experiência aprovadas para a aplicação web desktop-first e local-first. **Estado atual** descreve o spike técnico existente; **a implementar** descreve mudanças de UX aprovadas que ainda não estão no código. As decisões de produto e privacidade de [PRODUCT.md](PRODUCT.md) continuam válidas.
+Este documento consolida as decisões de experiência aprovadas para a aplicação web desktop-first e local-first. **Estado atual** descreve a implementação existente; **a implementar** descreve mudanças de UX aprovadas que ainda não estão no código. As decisões de produto e privacidade de [PRODUCT.md](PRODUCT.md) continuam válidas.
 
 ## 1. Objetivo da experiência
 
@@ -18,43 +18,41 @@ Permitir que uma pessoa revise um screenshot, oculte manualmente as regiões que
 
 ## 3. Fluxo principal
 
-1. Colar um screenshot ou arrastar uma imagem para a área de entrada.
+1. Colar um screenshot, arrastar uma imagem ou escolher um arquivo na área de entrada.
 2. Revisar a imagem exibida e arrastar o mouse para marcar uma região.
 3. Conferir a seleção visível e clicar em **Ocultar região**, ou usar Escape para cancelá-la.
 4. Repetir a seleção quando necessário. É possível selecionar uma tarja aplicada e removê-la individualmente; aplicar e remover tarjas integram desfazer/refazer.
 5. Revisar a imagem resultante e escolher **Copiar imagem** ou **Baixar PNG**. Se não houver tarjas, mostrar antes um aviso de revisão com as opções **Voltar** e **Continuar**.
 
-Ao carregar outra imagem, o fluxo anterior é encerrado. Se houver uma imagem editada, a troca requer confirmação antes de descartar as alterações.
+No editor, **Nova imagem** encerra a edição e retorna ao estado vazio. Ao carregar outra imagem, o fluxo anterior é encerrado. Se houver uma imagem editada, ambas as ações requerem confirmação antes de descartar as alterações.
 
 ## 4. Estados da interface
 
-### Estado atual do spike
+### Estado atual da implementação
 
 | Estado ou comportamento | Implementação atual |
 | --- | --- |
-| Vazio | Área para colar com Ctrl+V ou arrastar uma imagem. |
+| Vazio | Área para colar com Ctrl+V, arrastar uma imagem ou escolher um arquivo. |
 | Carregamento e falha de entrada | Mensagem simples de abertura ou erro; a imagem anterior permanece se a nova falhar. |
 | Imagem pronta | Canvas com a imagem e controles de edição. |
-| Seleção pendente | Área marcada visualmente; a ocultação só é aplicada pelo botão **Aplicar redaction**. |
+| Seleção pendente | Área marcada visualmente; a ocultação só é aplicada pelo botão **Ocultar região**. |
 | Tarjas aplicadas | Tarjas pretas visíveis; desfazer/refazer disponível para aplicações. |
 | Saída | Cópia e download em PNG disponíveis somente quando há ao menos uma tarja. |
-| Troca de imagem | Nova imagem limpa seleção e histórico, sem confirmação de descarte. |
+| Troca ou encerramento | **Nova imagem** volta ao estado vazio; colar ou arrastar substitui a imagem. Havendo tarjas aplicadas, ambas as ações pedem confirmação antes de descartar a edição. |
 | Feedback e privacidade | Mensagem de status e aviso permanente de processamento local. |
 
 ### Estados aprovados a implementar
 
-- Seleção pendente com cancelamento por Escape e botão **Ocultar região**.
+- Seleção pendente com cancelamento por Escape.
 - Tarja aplicada selecionada, com possibilidade de removê-la individualmente.
 - Confirmação de revisão antes de copiar ou baixar uma imagem sem tarjas.
-- Confirmação antes de substituir uma imagem editada.
 - Feedback de sucesso discreto e erro objetivo com caminho alternativo quando uma saída falhar.
-- Hierarquia visual que torne copiar a ação principal e baixar a secundária.
 
 ## 5. Seleção e confirmação
 
-**Estado atual:** o arraste no canvas cria uma seleção visível, sem ocultar os pixels imediatamente. O botão **Aplicar redaction** confirma a ação. Iniciar outro arraste substitui a seleção pendente.
+**Estado atual:** o arraste no canvas cria uma seleção visível, sem ocultar os pixels imediatamente. O botão **Ocultar região** confirma a ação. Iniciar outro arraste substitui a seleção pendente.
 
-**A implementar:** o botão deve se chamar **Ocultar região**. Escape cancela a seleção ativa sem criar ou remover tarjas. A seleção pendente deve permanecer distinguível de uma tarja já aplicada. Somente a confirmação explícita transforma a região selecionada em uma tarja sólida.
+**A implementar:** Escape cancela a seleção ativa sem criar ou remover tarjas. Ao permitir selecionar tarjas aplicadas, a seleção pendente deve permanecer distinguível delas.
 
 ## 6. Gerenciamento de tarjas
 
@@ -70,21 +68,21 @@ Ao carregar outra imagem, o fluxo anterior é encerrado. Se houver uma imagem ed
 
 ## 8. Copiar, baixar e avisos
 
-**Estado atual:** copiar e baixar PNG usam uma composição em canvas separada da imagem original; as tarjas são incorporadas aos pixels exportados. Ambas as ações ficam indisponíveis sem tarjas. Há mensagens simples de sucesso ou erro.
+**Estado atual:** copiar e baixar PNG usam uma composição em canvas separada da imagem original; as tarjas são incorporadas aos pixels exportados. Copiar é a ação visual principal e baixar PNG é secundária. Ambas ficam indisponíveis sem tarjas. Há mensagens simples de sucesso ou erro.
 
-**A implementar:** **Copiar imagem** é a ação principal e **Baixar PNG** é secundária. As duas ações ficam disponíveis mesmo sem tarjas, mas nesse caso devem abrir um aviso de revisão antes da saída, com **Voltar** e **Continuar**. O aviso informa que nenhuma região foi ocultada, sem afirmar que uma imagem com tarjas esteja completamente segura. Sucesso deve ter feedback discreto; em falha de cópia, oferecer baixar PNG como caminho alternativo e, em falha de download, oferecer a cópia quando disponível.
+**A implementar:** as duas ações ficam disponíveis mesmo sem tarjas, mas nesse caso devem abrir um aviso de revisão antes da saída, com **Voltar** e **Continuar**. O aviso informa que nenhuma região foi ocultada, sem afirmar que uma imagem com tarjas esteja completamente segura. Sucesso deve ter feedback discreto; em falha de cópia, oferecer baixar PNG como caminho alternativo e, em falha de download, oferecer a cópia quando disponível.
 
 ## 9. Troca de imagem
 
-**Estado atual:** colar ou soltar outra imagem substitui a atual e limpa seleção e histórico. Não há aviso quando a imagem anterior foi editada.
+**Estado atual:** a ação discreta **Nova imagem**, na barra superior, encerra a edição e retorna ao estado vazio. Com uma ou mais tarjas aplicadas, mostra uma confirmação para descartar ou cancelar; cancelar mantém imagem, tarjas, seleção e histórico. A mesma confirmação protege a substituição por colagem ou drag and drop. Sem tarjas aplicadas, inclusive com seleção pendente ou alterações apenas no histórico de refazer, não há confirmação. Ao voltar ao estado vazio, seleção, imagem, tarjas, histórico e mensagens da edição anterior são limpos. A confirmação tem foco inicial no cancelamento e pode ser fechada com Escape.
 
-**A implementar:** uma imagem é considerada editada somente quando há uma ou mais tarjas efetivamente aplicadas no estado atual. Nesse caso, antes de substituí-la, pedir confirmação para descartar as alterações ou voltar à imagem atual. Sem tarjas aplicadas, a troca não exige confirmação, inclusive quando todas foram removidas ou desfeitas e restam alterações apenas no histórico de refazer. Uma seleção de região ainda não confirmada é descartada ao trocar de imagem e não a torna editada. A troca limpa seleção, tarjas e histórico anteriores. Se a nova imagem não puder ser aberta, manter a imagem atual e apresentar um erro objetivo.
+**Regra:** uma imagem é considerada editada somente quando há uma ou mais tarjas efetivamente aplicadas no estado atual. Uma seleção de região ainda não confirmada é descartada ao trocar de imagem e não a torna editada. Uma troca confirmada limpa seleção, tarjas e histórico anteriores. Se a nova imagem não puder ser aberta, a imagem atual permanece e um erro objetivo é apresentado.
 
 ## 10. Hierarquia e direção visual
 
-**Estado atual:** interface clara e simples, com área de entrada, canvas, botões e mensagens. Os botões de saída têm tratamento visual semelhante.
+**Estado atual:** interface clara e simples, com área de entrada, canvas, botões e mensagens. Copiar tem prioridade visual sobre baixar PNG.
 
-**A implementar:** manter tema claro inicial, cores neutras e aparência funcional inspirada em ferramentas nativas. O screenshot deve ocupar a maior área útil. Organizar os controles próximos da imagem, com **Copiar imagem** visualmente prioritário e **Baixar PNG** secundário. Não usar sidebar ou dashboard. Avisos e confirmações devem ser claros, sem linguagem que prometa segurança completa.
+**Direção aprovada:** manter tema claro inicial, cores neutras e aparência funcional inspirada em ferramentas nativas. O screenshot deve ocupar a maior área útil. Organizar os controles próximos da imagem, com **Copiar imagem** visualmente prioritário e **Baixar PNG** secundário. Não usar sidebar ou dashboard. Avisos e confirmações devem ser claros, sem linguagem que prometa segurança completa.
 
 ## 11. Acessibilidade e responsividade
 
@@ -94,12 +92,12 @@ Ao carregar outra imagem, o fluxo anterior é encerrado. Se houver uma imagem ed
 
 ## 12. Critérios de aceitação
 
-- A área vazia explica como colar ou arrastar uma imagem; a imagem carregada se torna o foco da interface.
+- A área vazia explica como colar, arrastar ou escolher um arquivo de imagem; a imagem carregada se torna o foco da interface.
 - Arrastar cria uma seleção visível sem ocultação imediata; **Ocultar região** aplica a tarja e Escape cancela a seleção.
 - Uma tarja aplicada pode ser selecionada por clique e removida individualmente, sem alterar as demais.
 - Desfazer/refazer reverte e reaplica tanto a aplicação quanto a remoção de tarjas; uma nova edição após desfazer limpa o refazer.
 - Copiar é a ação principal e baixar PNG é secundária. Ambas podem exportar uma imagem sem tarjas somente após o aviso de revisão com **Voltar** ou **Continuar**.
-- Trocar uma imagem editada exige confirmação; a troca confirmada limpa seleção e histórico. Uma falha ao abrir a nova imagem preserva a anterior.
+- **Nova imagem** retorna ao estado vazio. Com tarjas aplicadas, voltar ao estado vazio ou substituir a imagem exige confirmação; cancelar preserva a edição, e confirmar limpa seleção, tarjas, histórico e mensagens anteriores. Sem tarjas aplicadas, não há confirmação. Uma falha ao abrir a nova imagem preserva a anterior.
 - O PNG copiado ou baixado contém as tarjas nos pixels. Nenhuma imagem é enviada a servidores ou armazenada pela aplicação.
 - Os controles têm rótulos claros, foco visível e acesso por teclado; mensagens de erro indicam uma alternativa quando houver uma.
 - O aviso discreto de processamento local permanece visível; a interface não afirma que as tarjas eliminam todos os riscos de exposição.
