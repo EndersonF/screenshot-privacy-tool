@@ -12,6 +12,7 @@ dist-ssr/
 coverage/
 playwright-report/
 test-results/
+performance-results/
 
 # Logs
 *.log
