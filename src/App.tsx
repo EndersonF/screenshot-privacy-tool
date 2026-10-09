@@ -13,7 +13,8 @@ import {
   undo,
 } from './redaction'
 import type { History, Point, Rect } from './redaction'
-import { Brand } from './components/Brand'
+import { PublicHeader, PublicFooter } from './components/PublicLayout'
+import { PublicInformation } from './components/PublicInformation'
 import { EditorToolbar } from './components/EditorToolbar'
 import { EmptyState } from './components/EmptyState'
 import { Feedback } from './components/Feedback'
@@ -461,9 +462,7 @@ export default function App() {
         </>
       ) : (
         <>
-          <header className="empty-header">
-            <Brand />
-          </header>
+          <PublicHeader />
           <main className="empty-main">
             <EmptyState
               isDragging={draggingFile}
@@ -472,7 +471,9 @@ export default function App() {
               onChooseFile={() => fileInputRef.current?.click()}
               chooseButtonRef={chooseButtonRef}
             />
+            <PublicInformation />
           </main>
+          <PublicFooter />
         </>
       )}
 
