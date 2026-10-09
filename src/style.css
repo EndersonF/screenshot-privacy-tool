@@ -2,8 +2,8 @@
    Tokens
    ------------------------------------------------------------------ */
 :root {
-  /* Fonte do sistema: SF Pro no macOS, Segoe UI no Windows.
-     Evita qualquer requisição externa de fontes. */
+  /* System UI é a escolha tipográfica inicial do produto.
+     Usa fontes nativas do dispositivo, sem downloads de fontes. */
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, sans-serif;
 
@@ -210,10 +210,21 @@ kbd {
 /* ------------------------------------------------------------------
    Estado vazio
    ------------------------------------------------------------------ */
+.empty-header,
+.empty,
+.public-information,
+.public-footer {
+  width: min(100% - 48px, 920px);
+  margin: 0 auto;
+}
+
 .empty-header {
   display: flex;
   align-items: center;
-  padding: 20px 28px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  padding: 20px 0;
 }
 
 .empty-main {
@@ -224,9 +235,9 @@ kbd {
 
 .empty {
   display: grid;
-  flex: 1;
+  flex: 0 0 auto;
   place-items: center;
-  padding: 24px 24px 64px;
+  padding: 64px 0 56px;
 }
 
 .empty__inner {
@@ -303,6 +314,10 @@ kbd {
   font-weight: 600;
 }
 
+.dropzone__shortcut {
+  white-space: nowrap;
+}
+
 .dropzone__hint {
   color: var(--text-secondary);
   font-size: 0.93rem;
@@ -331,6 +346,166 @@ kbd {
 .privacy-note svg {
   margin-right: 6px;
   vertical-align: -2px;
+}
+
+/* Informações públicas, disponíveis somente no estado vazio. */
+.public-nav,
+.public-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+}
+
+.public-nav a,
+.public-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.public-nav a:hover,
+.public-footer a:hover {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.public-section {
+  padding: 40px 0;
+  border-top: 1px solid var(--border);
+  scroll-margin-top: 24px;
+}
+
+.public-section h2 {
+  margin: 0 0 24px;
+  font-size: 1.4rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.how-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.how-steps li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start;
+  align-items: baseline;
+  gap: 8px 10px;
+}
+
+.how-steps li::before {
+  counter-increment: step;
+  content: '0' counter(step);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.how-steps h3 {
+  margin: 0;
+  font-size: 1.06rem;
+  font-weight: 600;
+}
+
+.how-steps p {
+  grid-column: 2;
+}
+
+.how-steps p,
+.public-prose,
+.faq__answer {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.public-prose {
+  max-width: 68ch;
+}
+
+.public-prose p + p {
+  margin-top: 16px;
+}
+
+.public-section--privacy {
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.public-section--privacy + .public-section {
+  padding-top: 48px;
+  border-top: 0;
+}
+
+.faq__item + .faq__item {
+  border-top: 1px solid var(--border);
+}
+
+.faq__item h3 {
+  margin: 0;
+}
+
+.faq__question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  padding: 18px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: 500 1rem/1.5 var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.faq__question svg {
+  color: var(--text-secondary);
+  transition: transform var(--duration) var(--ease);
+}
+
+.faq__question[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.faq__answer {
+  max-width: 68ch;
+  padding: 0 38px 20px 0;
+  animation: fade var(--duration) var(--ease) both;
+}
+
+.public-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 24px 0 32px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+.public-footer__name {
+  color: var(--text);
+  font-weight: 500;
 }
 
 /* ------------------------------------------------------------------
@@ -569,6 +744,30 @@ kbd {
   }
 }
 
+@media (max-width: 600px) {
+  .public-nav {
+    width: 100%;
+    gap: 12px 20px;
+  }
+
+  .public-section {
+    padding: 32px 0;
+  }
+
+  .how-steps {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .public-section--privacy {
+    padding: 24px 20px;
+  }
+
+  .public-section--privacy + .public-section {
+    padding-top: 40px;
+  }
+}
+
 @media (max-width: 720px) {
   .topbar {
     flex-wrap: wrap;
@@ -591,12 +790,19 @@ kbd {
     flex: 1 1 auto;
   }
 
+  .empty-header,
+  .empty,
+  .public-information,
+  .public-footer {
+    width: calc(100% - 32px);
+  }
+
   .empty-header {
-    padding: 16px 20px;
+    padding: 16px 0;
   }
 
   .empty {
-    padding: 8px 16px 40px;
+    padding: 32px 0 40px;
   }
 
   .dropzone {

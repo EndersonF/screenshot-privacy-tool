@@ -1,24 +1,69 @@
-# screenshot-privacy-tool
+# Proteção de screenshots
 
-Projeto open source em fase inicial para proteger informações sensíveis em screenshots antes do compartilhamento, com processamento local e sem envio da imagem a servidores.
+É fácil compartilhar um screenshot sem perceber que ele contém um e-mail, telefone ou outra informação pessoal. Este projeto oferece uma etapa de revisão antes do compartilhamento: você escolhe as regiões, aplica tarjas sólidas e copia ou baixa o resultado.
 
-As decisões de produto e o escopo inicial estão em [PRODUCT.md](PRODUCT.md). O MVP 0.1 permite colar, arrastar ou escolher uma imagem, ocultar regiões manualmente, desfazer/refazer e copiar ou baixar um PNG.
+A edição acontece no navegador, sem upload do screenshot para a aplicação. O projeto é gratuito, open source e não exige conta.
 
-## Executar localmente
+[Abrir a aplicação](https://screenshot-privacy-tool.pages.dev)
 
-Requer Node.js compatível com Vite. Execute `npm ci` e depois `npm run dev`. Abra o endereço local mostrado pelo Vite em Chrome ou Edge. Para verificar o projeto, execute `npm run build`, `npm run lint` e `npm test` (testes de navegador com Chrome instalado). Para conferir a build localmente, execute `npx vite preview` após o build.
+## Como usar
 
-A imagem é processada no navegador e não é enviada para servidores. A cópia de PNG para o clipboard requer uma página em contexto seguro, como `localhost` ou HTTPS.
+1. Cole um screenshot com Ctrl+V (ou ⌘+V), arraste uma imagem ou clique em **Escolher arquivo**.
+2. Arraste o mouse para selecionar uma região. Confira a seleção e clique em **Ocultar região**. Escape cancela uma seleção pendente.
+3. Repita nas outras regiões e revise a imagem inteira.
+4. Use **Copiar imagem protegida** ou **Baixar PNG** para compartilhar o resultado.
 
-## Preparar deploy de testes no Cloudflare Pages
+## O que o MVP 0.1 oferece
 
-Conecte o repositório GitHub a um projeto **Pages** e configure a branch de produção como `main`, o comando de build como `npm run build` e o diretório de saída como `dist`. A raiz do projeto é a raiz do repositório. O MVP não precisa de variáveis de ambiente, Pages Functions, Workers nem serviços de terceiros. A publicação ainda não foi realizada.
+- Entrada por colagem, drag and drop ou seleção de arquivo.
+- Ocultação manual com tarjas sólidas e opacas.
+- Seleção de uma tarja aplicada para removê-la individualmente.
+- Desfazer e refazer aplicações e remoções.
+- Cópia da imagem e download em PNG com as tarjas incorporadas aos pixels.
+- Aviso antes de exportar sem tarjas e confirmação antes de descartar uma imagem com ocultações.
+- Ação **Nova imagem** para encerrar a edição.
 
-O arquivo [`public/_headers`](public/_headers) é copiado para `dist/_headers` no build. O Cloudflare Pages aplica essas políticas às respostas estáticas; o servidor `vite preview` não simula os headers do Pages. A CSP permite somente scripts e estilos da própria origem, imagens locais e URLs `blob:`; bloqueia conexões iniciadas pelo JavaScript. A geração do PNG e o Clipboard API continuam no navegador.
+## Privacidade e limitações
 
-Depois do primeiro deploy, confira no endereço real:
+O screenshot é decodificado e editado localmente, com estado temporário na memória durante o uso. A aplicação não envia a imagem a um backend nem persiste screenshots em uma conta, banco de dados ou armazenamento do navegador. A hospedagem entrega os arquivos da ferramenta e pode registrar dados técnicos de navegação; isso é distinto do conteúdo da imagem editada.
 
-1. No painel **Network**, confirme os headers de `index.html` e dos assets e verifique que não há requisições a terceiros nem envio da imagem.
-2. No console, confira que não há violações de CSP ao colar, arrastar ou escolher uma imagem, aplicar tarjas, desfazer/refazer, copiar e baixar PNG.
-3. Abra o PNG fora da aplicação e confirme que as tarjas estão incorporadas aos pixels. Verifique também o aviso ao exportar sem tarjas.
-4. Confira que a cópia funciona em HTTPS e que a página não pode ser incorporada em um iframe.
+O arquivo exportado contém as tarjas nos pixels. Arquivos baixados e conteúdo copiado passam a ser gerenciados pelo dispositivo e navegador. A ferramenta não controla o que acontece quando você os compartilha em outro serviço.
+
+A identificação de informações é manual. Não há OCR ou detecção automática, e a presença de tarjas não garante que todo dado sensível foi ocultado. Revise o resultado antes de compartilhar.
+
+A prioridade é desktop com Chrome ou Edge modernos. A seleção de regiões usa arraste do mouse; os controles podem ser usados pelo teclado. SVG não é aceito, e outros formatos dependem da decodificação disponível no navegador. Imagens de grande resolução podem consumir bastante memória. A cópia de PNG exige HTTPS ou localhost e pode depender da permissão do clipboard; o download é a alternativa disponível.
+
+O projeto não promete funcionamento offline. As decisões de produto e experiência estão em [PRODUCT.md](PRODUCT.md) e [UX.md](UX.md).
+
+## Tecnologias
+
+Vite, React e TypeScript compõem a interface. A Canvas API renderiza a imagem e gera o PNG; o núcleo de redaction fica independente de React em `src/redaction.ts`. Playwright cobre o editor e o histórico, e ESLint e TypeScript verificam o código. Os ícones usam Lucide; a tipografia inicial é System UI, com fontes nativas do dispositivo e sem fontes externas.
+
+## Executar e testar localmente
+
+Use Node.js 22.12+ ou uma versão mais recente compatível com Vite, além de Chrome instalado para os testes de navegador.
+
+```sh
+npm ci
+npm run dev
+```
+
+Abra o endereço informado pelo Vite. Para verificar o projeto:
+
+```sh
+npm run build
+npm run lint
+npm test
+```
+
+Para abrir a build de produção localmente, execute `npx vite preview` após o build. O arquivo `public/_headers` contém as políticas do Cloudflare Pages e é copiado para `dist/_headers`; o servidor de preview do Vite não aplica essas políticas automaticamente.
+
+## Contribuir
+
+Abra uma issue no [repositório](https://github.com/EndersonF/screenshot-privacy-tool) para relatar um problema ou discutir uma mudança. Para contribuir com código, crie uma branch, mantenha a alteração focada e execute build, lint e testes antes de abrir um pull request. Inclua os passos para reproduzir o problema e validar a correção, usando imagens sintéticas em vez de dados pessoais.
+
+Mudanças devem preservar o processamento local, a revisão manual e a exportação com tarjas nos pixels. Consulte os documentos de produto e UX antes de ampliar o escopo.
+
+## Licença
+
+Distribuído sob a [licença MIT](LICENSE).

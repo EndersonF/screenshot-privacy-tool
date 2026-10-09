@@ -32,7 +32,7 @@ export function EmptyState({ isDragging, status, modifierKey, onChooseFile, choo
           ) : (
             <>
               <p className="dropzone__title">
-                Cole um screenshot com <kbd>{modifierKey}</kbd> <kbd>V</kbd>
+                Cole um screenshot com <span className="dropzone__shortcut"><kbd>{modifierKey}</kbd> <kbd>V</kbd></span>
               </p>
               <p className="dropzone__hint">ou arraste uma imagem para esta área</p>
             </>
@@ -50,7 +50,7 @@ export function EmptyState({ isDragging, status, modifierKey, onChooseFile, choo
 
         <p className="privacy-note">
           <Lock size={14} strokeWidth={2} aria-hidden="true" />
-          Tudo acontece no seu navegador. A imagem não é enviada para nenhum servidor.
+          Processado localmente. Nenhum screenshot é enviado para a aplicação.
         </p>
       </div>
     </div>
