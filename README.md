@@ -1,6 +1,6 @@
-# Proteção de screenshots
+# Tampei
 
-É fácil compartilhar um screenshot sem perceber que ele contém um e-mail, telefone ou outra informação pessoal. Este projeto oferece uma etapa de revisão antes do compartilhamento: você escolhe as regiões, aplica tarjas sólidas e copia ou baixa o resultado.
+É fácil compartilhar um screenshot sem perceber que ele contém um e-mail, telefone ou outra informação pessoal. Tampei oferece uma etapa de revisão antes do compartilhamento: você escolhe as regiões, aplica tarjas sólidas e copia ou baixa o resultado.
 
 A edição acontece no navegador, sem upload do screenshot para a aplicação. O projeto é gratuito, open source e não exige conta.
 

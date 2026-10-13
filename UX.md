@@ -1,4 +1,4 @@
-# UX do MVP 0.1
+# Tampei: UX do MVP 0.1
 
 Este documento consolida as decisões de experiência aprovadas para a aplicação web desktop-first e local-first. **Estado atual** descreve a implementação existente; **a implementar** descreve mudanças de UX aprovadas que ainda não estão no código. As decisões de produto e privacidade de [PRODUCT.md](PRODUCT.md) continuam válidas.
 

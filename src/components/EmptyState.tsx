@@ -17,7 +17,7 @@ export function EmptyState({ isDragging, status, modifierKey, onChooseFile, choo
       <div className="empty__inner">
         <h1 className="empty__title">Proteja seu screenshot antes de compartilhar</h1>
         <p className="empty__subtitle">
-          Cubra dados pessoais com tarjas sólidas e copie ou baixe a imagem protegida.
+          Tampe informações pessoais com tarjas sólidas. Depois, copie ou baixe a imagem.
         </p>
 
         <section
