@@ -28,7 +28,7 @@ export function PublicHeader() {
 export function PublicFooter() {
   return (
     <footer className="public-footer">
-      <p><span className="public-footer__name">Proteção de screenshots</span><br />Projeto gratuito e open source.</p>
+      <p><span className="public-footer__name">Tampei</span><br />Projeto gratuito e open source.</p>
       <nav aria-label="Links do projeto">
         <a href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer" aria-label="GitHub (abre em nova aba)">GitHub</a>
         <a href={`${REPOSITORY_URL}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer" aria-label="Licença MIT (abre em nova aba)">Licença MIT</a>

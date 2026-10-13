@@ -1,8 +1,8 @@
-# Produto: privacidade para screenshots
+# Tampei: privacidade para screenshots
 
 ## 1. Visão do produto
 
-Ferramenta open source, simples e local-first para proteger informações sensíveis de um screenshot antes de compartilhá-lo. O usuário escolhe o que ocultar e obtém uma imagem protegida para copiar ou baixar.
+Tampei é uma ferramenta open source, simples e local-first para proteger informações sensíveis de um screenshot antes de compartilhá-lo. O usuário escolhe o que ocultar e obtém uma imagem protegida para copiar ou baixar.
 
 ## 2. Problema
 
