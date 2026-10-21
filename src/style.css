@@ -188,6 +188,15 @@ kbd {
   color: var(--text);
 }
 
+.btn--confirm {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.btn--confirm:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
 .btn--secondary {
   border-color: var(--border-strong);
   background: var(--surface);
@@ -542,6 +551,38 @@ kbd {
   color: var(--text-secondary);
 }
 
+.editor-tools,
+.export-actions {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.selection-hint,
+.export-hint {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.selection-hint {
+  /* Uma linha estável evita mover o canvas durante o arraste. */
+  white-space: nowrap;
+}
+
+.selection-hint--pending {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.export-actions {
+  width: min(100%, 340px);
+  /* Reserva a revisão antes da primeira tarja para manter a imagem estável. */
+  min-height: 74px;
+  align-content: start;
+}
+
 .tool-group {
   display: flex;
   flex-wrap: wrap;
@@ -762,6 +803,20 @@ kbd {
 /* ------------------------------------------------------------------
    Responsivo
    ------------------------------------------------------------------ */
+@media (max-width: 1100px) {
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .topbar__side {
+    flex: 0 0 auto;
+  }
+
+  .topbar__side--end {
+    flex: 1 1 100%;
+  }
+}
+
 @media (max-width: 880px) {
   .brand--compact .brand__name {
     display: none;
@@ -795,6 +850,7 @@ kbd {
 @media (max-width: 720px) {
   .topbar {
     flex-wrap: wrap;
+    gap: 8px 16px;
     padding: 10px 14px;
   }
 
@@ -807,6 +863,10 @@ kbd {
   }
 
   .tool-group--export {
+    width: 100%;
+  }
+
+  .export-actions {
     width: 100%;
   }
 
@@ -836,5 +896,15 @@ kbd {
 
   .statusbar {
     padding: 8px 14px;
+  }
+
+  .statusbar__feedback {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 360px) {
+  .tool-group--export .btn svg {
+    display: none;
   }
 }

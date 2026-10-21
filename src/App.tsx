@@ -339,7 +339,7 @@ export default function App() {
     }
     const rect = rectFromPoints(drag.start, pointOnCanvas(event), image.width, image.height)
     setSelection(rect)
-    if (rect) setMessage('Região marcada. Clique em “Ocultar região” para cobri-la.')
+    if (rect) setMessage('Região marcada.')
   }
 
   const onPointerCancel = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -353,7 +353,7 @@ export default function App() {
     updateHistory((current) => applyRedaction(current, selection))
     setSelection(null)
     setSelectedRedaction(null)
-    setMessage('Região ocultada. Revise a imagem antes de compartilhar.')
+    setMessage('Região ocultada.')
   }
 
   const onRemove = () => {
@@ -454,6 +454,7 @@ export default function App() {
             canRemove={selectedRedaction !== null}
             canUndo={history.past.length > 0}
             canRedo={history.future.length > 0}
+            hasRedactions={history.applied.length > 0}
             onHide={onHide}
             onRemove={onRemove}
             onUndo={onUndo}

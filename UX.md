@@ -35,9 +35,9 @@ No editor, **Nova imagem** encerra a edição e retorna ao estado vazio. Ao carr
 | Vazio | Área para colar com Ctrl+V, arrastar uma imagem ou escolher um arquivo. |
 | Carregamento e falha de entrada | Mensagem simples de abertura ou erro; a imagem anterior permanece se a nova falhar. |
 | Imagem pronta | Canvas com a imagem e controles de edição. |
-| Seleção pendente | Área marcada visualmente; a ocultação só é aplicada pelo botão **Ocultar região**. |
+| Seleção pendente | Área marcada visualmente; orientação junto ao botão **Ocultar região**, que ganha destaque para confirmar a aplicação. |
 | Tarjas aplicadas | Tarjas pretas visíveis; clique seleciona a tarja superior em áreas sobrepostas e permite removê-la. Aplicação e remoção integram desfazer/refazer. |
-| Saída | Cópia e download em PNG disponíveis; sem tarjas, um aviso de revisão precede a exportação. |
+| Saída | Cópia e download em PNG disponíveis; com tarjas, orientação discreta de revisão junto às ações; sem tarjas, um aviso de revisão precede a exportação. |
 | Troca ou encerramento | **Nova imagem** volta ao estado vazio; colar ou arrastar substitui a imagem. Havendo tarjas aplicadas, ambas as ações pedem confirmação antes de descartar a edição. |
 | Feedback e privacidade | Mensagem de status e aviso permanente de processamento local. |
 
@@ -48,6 +48,8 @@ No editor, **Nova imagem** encerra a edição e retorna ao estado vazio. Ao carr
 ## 5. Seleção e confirmação
 
 **Estado atual:** o arraste no canvas cria uma seleção visível, sem ocultar os pixels imediatamente. O botão **Ocultar região** confirma a ação. Iniciar outro arraste substitui a seleção pendente. Escape cancela a seleção ativa sem alterar as tarjas ou o histórico; se houver um diálogo aberto, ele recebe o Escape primeiro. A seleção pendente tem indicação visual distinta da tarja aplicada selecionada.
+
+A orientação acima do grupo de edição muda de **Arraste na imagem para selecionar.** para **Confirme em “Ocultar região”.** enquanto há uma seleção. O mesmo botão ganha destaque azul; não há uma segunda ação de confirmação. A linha de orientação mantém sua altura para não deslocar a imagem durante o arraste e permanece próxima ao botão na barra superior fixa durante a rolagem.
 
 ## 6. Gerenciamento de tarjas
 
@@ -60,6 +62,8 @@ No editor, **Nova imagem** encerra a edição e retorna ao estado vazio. Ao carr
 ## 8. Copiar, baixar e avisos
 
 **Estado atual:** copiar e baixar PNG usam uma composição em canvas separada da imagem original; as tarjas são incorporadas aos pixels exportados. Copiar é a ação visual principal e baixar PNG é secundária. As duas ações ficam disponíveis sem tarjas, mas nesse caso abrem um aviso de revisão com **Voltar à edição** e **Continuar mesmo assim**. O aviso informa que nenhuma região foi ocultada, sem afirmar que uma imagem com tarjas esteja completamente segura. Há feedback discreto de sucesso e mensagens de erro; em falha de cópia, a mensagem oferece baixar PNG como alternativa.
+
+Com uma ou mais tarjas aplicadas, as ações de exportação têm a orientação discreta **Antes de compartilhar, confira se ocultou todas as informações necessárias.** Ela não exige confirmação e não é repetida na mensagem de status após aplicar uma tarja. Desfazer ou remover a última tarja retira essa orientação e mantém o aviso existente para exportar sem ocultações.
 
 **A implementar:** em falha de download, oferecer a cópia como caminho alternativo quando disponível.
 
@@ -85,9 +89,11 @@ No editor, **Nova imagem** encerra a edição e retorna ao estado vazio. Ao carr
 
 - A área vazia explica como colar, arrastar ou escolher um arquivo de imagem; a imagem carregada se torna o foco da interface.
 - Arrastar cria uma seleção visível sem ocultação imediata; **Ocultar região** aplica a tarja e Escape cancela a seleção.
+- A seleção pendente destaca o único botão **Ocultar região** e mostra a instrução de confirmação junto a ele, sem deslocar o canvas durante o gesto. Instrução e botão permanecem visíveis em telas pequenas.
 - Uma tarja aplicada pode ser selecionada por clique e removida individualmente, sem alterar as demais.
 - Desfazer/refazer reverte e reaplica tanto a aplicação quanto a remoção de tarjas; uma nova edição após desfazer limpa o refazer.
 - Copiar é a ação principal e baixar PNG é secundária. Ambas podem exportar uma imagem sem tarjas somente após o aviso de revisão com **Voltar** ou **Continuar**.
+- Com tarjas, a orientação de revisão permanece junto às ações de exportação, sem confirmação adicional nem promessa de proteção completa.
 - **Nova imagem** retorna ao estado vazio. Com tarjas aplicadas, voltar ao estado vazio ou substituir a imagem exige confirmação; cancelar preserva a edição, e confirmar limpa seleção, tarjas, histórico e mensagens anteriores. Sem tarjas aplicadas, não há confirmação. Uma falha ao abrir a nova imagem preserva a anterior.
 - O PNG copiado ou baixado contém as tarjas nos pixels. Nenhuma imagem é enviada a servidores ou armazenada pela aplicação.
 - Os controles têm rótulos claros, foco visível e acesso por teclado; mensagens de erro indicam uma alternativa quando houver uma.

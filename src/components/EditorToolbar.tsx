@@ -7,6 +7,7 @@ type EditorToolbarProps = {
   canRemove: boolean
   canUndo: boolean
   canRedo: boolean
+  hasRedactions: boolean
   onHide: () => void
   onRemove: () => void
   onUndo: () => void
@@ -22,6 +23,7 @@ export function EditorToolbar({
   canRemove,
   canUndo,
   canRedo,
+  hasRedactions,
   onHide,
   onRemove,
   onUndo,
@@ -45,50 +47,66 @@ export function EditorToolbar({
         </button>
       </div>
 
-      <div className="tool-group tool-group--edit" role="group" aria-label="Edição">
-        <button type="button" className="btn btn--tinted" onClick={onHide} disabled={!canHide}>
-          <EyeOff size={16} strokeWidth={2} aria-hidden="true" />
-          Ocultar região
-        </button>
-        {canRemove && (
-          <button type="button" className="btn btn--ghost" onClick={onRemove}>
-            <Trash2 size={16} strokeWidth={2} aria-hidden="true" />
-            Remover ocultação
+      <div className="editor-tools">
+        <p id="selection-hint" className={`selection-hint${canHide ? ' selection-hint--pending' : ''}`}>
+          {canHide ? 'Confirme em “Ocultar região”.' : 'Arraste na imagem para selecionar.'}
+        </p>
+        <div className="tool-group tool-group--edit" role="group" aria-label="Edição">
+          <button
+            type="button"
+            className={`btn ${canHide ? 'btn--confirm' : 'btn--tinted'}`}
+            onClick={onHide}
+            disabled={!canHide}
+            aria-describedby="selection-hint"
+          >
+            <EyeOff size={16} strokeWidth={2} aria-hidden="true" />
+            Ocultar região
           </button>
-        )}
-        <span className="tool-divider" aria-hidden="true" />
-        <button
-          type="button"
-          className="btn btn--ghost btn--icon"
-          onClick={onUndo}
-          disabled={!canUndo}
-          aria-label="Desfazer"
-          title="Desfazer"
-        >
-          <Undo2 size={17} strokeWidth={2} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className="btn btn--ghost btn--icon"
-          onClick={onRedo}
-          disabled={!canRedo}
-          aria-label="Refazer"
-          title="Refazer"
-        >
-          <Redo2 size={17} strokeWidth={2} aria-hidden="true" />
-        </button>
+          {canRemove && (
+            <button type="button" className="btn btn--ghost" onClick={onRemove}>
+              <Trash2 size={16} strokeWidth={2} aria-hidden="true" />
+              Remover ocultação
+            </button>
+          )}
+          <span className="tool-divider" aria-hidden="true" />
+          <button
+            type="button"
+            className="btn btn--ghost btn--icon"
+            onClick={onUndo}
+            disabled={!canUndo}
+            aria-label="Desfazer"
+            title="Desfazer"
+          >
+            <Undo2 size={17} strokeWidth={2} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--icon"
+            onClick={onRedo}
+            disabled={!canRedo}
+            aria-label="Refazer"
+            title="Refazer"
+          >
+            <Redo2 size={17} strokeWidth={2} aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       <div className="topbar__side topbar__side--end">
-        <div className="tool-group tool-group--export" role="group" aria-label="Exportação">
-          <button type="button" className="btn btn--secondary" onClick={onDownload}>
-            <Download size={16} strokeWidth={2} aria-hidden="true" />
-            Baixar PNG
-          </button>
-          <button type="button" className="btn btn--primary" onClick={onCopy}>
-            <Copy size={16} strokeWidth={2} aria-hidden="true" />
-            Copiar imagem protegida
-          </button>
+        <div className="export-actions">
+          <div className="tool-group tool-group--export" role="group" aria-label="Exportação" aria-describedby={hasRedactions ? 'export-hint' : undefined}>
+            <button type="button" className="btn btn--secondary" onClick={onDownload}>
+              <Download size={16} strokeWidth={2} aria-hidden="true" />
+              Baixar PNG
+            </button>
+            <button type="button" className="btn btn--primary" onClick={onCopy}>
+              <Copy size={16} strokeWidth={2} aria-hidden="true" />
+              Copiar imagem protegida
+            </button>
+          </div>
+          {hasRedactions && (
+            <p id="export-hint" className="export-hint">Antes de compartilhar, confira se ocultou todas as informações necessárias.</p>
+          )}
         </div>
       </div>
     </header>
