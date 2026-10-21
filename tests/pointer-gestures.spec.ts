@@ -29,6 +29,10 @@ test.beforeEach(async ({ page }) => {
     name: 'synthetic.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64'),
   })
   await expect(page.locator('canvas')).toBeVisible()
+  // As coordenadas CDP precisam da geometria final da animação de entrada.
+  await page.locator('canvas').evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map((animation) => animation.finished))
+  })
   await page.evaluate(() => {
     window.__gesturePointers = []
     window.__gesturePng = null
