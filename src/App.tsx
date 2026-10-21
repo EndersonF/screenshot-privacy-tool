@@ -26,6 +26,8 @@ type PendingAction =
   | { kind: 'replace'; bitmap: ImageBitmap }
   | { kind: 'export'; format: 'copy' | 'download' }
 
+type SelectionDrag = { pointerId: number; pointerType: string; start: Point; clientStart: Point }
+
 function pointOnCanvas(event: PointerEvent<HTMLCanvasElement>): Point {
   const canvas = event.currentTarget
   const bounds = canvas.getBoundingClientRect()
@@ -47,8 +49,9 @@ export default function App() {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
-  const startPoint = useRef<Point | null>(null)
-  const startClientPoint = useRef<Point | null>(null)
+  const selectionDrag = useRef<SelectionDrag | null>(null)
+  const activeTouches = useRef(new Set<number>())
+  const touchGestureBlocked = useRef(false)
   const loadSequence = useRef(0)
   const [image, setImage] = useState<ImageBitmap | null>(null)
   const [history, setHistory] = useState(emptyHistory)
@@ -63,6 +66,39 @@ export default function App() {
   const setMessage = useCallback((text: string, tone: StatusTone = 'info') => {
     setStatus({ text, tone })
   }, [])
+
+  const cancelSelection = useCallback(() => {
+    selectionDrag.current = null
+    setSelection(null)
+    setSelectedRedaction(null)
+    setMessage('Seleção cancelada.')
+  }, [setMessage])
+
+  useEffect(() => {
+    const onTouchDown = (event: globalThis.PointerEvent) => {
+      if (event.pointerType !== 'touch') return
+      activeTouches.current.add(event.pointerId)
+      if (activeTouches.current.size > 1) {
+        touchGestureBlocked.current = true
+        if (selectionDrag.current?.pointerType === 'touch') cancelSelection()
+      }
+    }
+    const onTouchEnd = (event: globalThis.PointerEvent) => {
+      if (event.pointerType !== 'touch') return
+      activeTouches.current.delete(event.pointerId)
+      if (activeTouches.current.size === 0) touchGestureBlocked.current = false
+    }
+    // Observa também contatos fora do canvas, inclusive após perda de captura.
+    // O bloqueio só termina quando todos os contatos de toque saem.
+    window.addEventListener('pointerdown', onTouchDown, true)
+    window.addEventListener('pointerup', onTouchEnd, true)
+    window.addEventListener('pointercancel', onTouchEnd, true)
+    return () => {
+      window.removeEventListener('pointerdown', onTouchDown, true)
+      window.removeEventListener('pointerup', onTouchEnd, true)
+      window.removeEventListener('pointercancel', onTouchEnd, true)
+    }
+  }, [cancelSelection])
 
   const updateHistory = useCallback((update: (current: History) => History) => {
     const next = update(historyRef.current)
@@ -81,8 +117,7 @@ export default function App() {
     updateHistory(emptyHistory)
     setSelection(null)
     setSelectedRedaction(null)
-    startPoint.current = null
-    startClientPoint.current = null
+    selectionDrag.current = null
     setMessage('Arraste sobre a imagem para marcar o que deseja ocultar.')
   }, [setMessage, updateHistory])
 
@@ -92,8 +127,7 @@ export default function App() {
     updateHistory(emptyHistory)
     setSelection(null)
     setSelectedRedaction(null)
-    startPoint.current = null
-    startClientPoint.current = null
+    selectionDrag.current = null
     setDraggingFile(false)
     setStatus({ text: '', tone: 'info' })
   }, [updateHistory])
@@ -132,16 +166,12 @@ export default function App() {
   useEffect(() => {
     const onEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || dialogRef.current?.open) return
-      if (!startPoint.current && !selection && selectedRedaction === null) return
-      startPoint.current = null
-      startClientPoint.current = null
-      setSelection(null)
-      setSelectedRedaction(null)
-      setMessage('Seleção cancelada.')
+      if (!selectionDrag.current && !selection && selectedRedaction === null) return
+      cancelSelection()
     }
     window.addEventListener('keydown', onEscape)
     return () => window.removeEventListener('keydown', onEscape)
-  }, [selection, selectedRedaction, setMessage])
+  }, [selection, selectedRedaction, cancelSelection])
 
   const cancelPendingAction = () => {
     dialogRef.current?.close()
@@ -277,42 +307,45 @@ export default function App() {
   }
 
   const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (!image || event.button !== 0) return
+    if (!image || event.button !== 0 || selectionDrag.current || touchGestureBlocked.current) return
     event.currentTarget.setPointerCapture(event.pointerId)
-    startPoint.current = pointOnCanvas(event)
-    startClientPoint.current = { x: event.clientX, y: event.clientY }
+    selectionDrag.current = {
+      pointerId: event.pointerId,
+      pointerType: event.pointerType,
+      start: pointOnCanvas(event),
+      clientStart: { x: event.clientX, y: event.clientY },
+    }
     setSelection(null)
     setSelectedRedaction(null)
   }
 
   const onPointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (!image || !startPoint.current) return
-    setSelection(rectFromPoints(startPoint.current, pointOnCanvas(event), image.width, image.height))
+    const drag = selectionDrag.current
+    if (!image || !drag || drag.pointerId !== event.pointerId) return
+    setSelection(rectFromPoints(drag.start, pointOnCanvas(event), image.width, image.height))
   }
 
   const onPointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (!image || !startPoint.current) return
-    const clientStart = startClientPoint.current
-    const isClick = clientStart && Math.hypot(event.clientX - clientStart.x, event.clientY - clientStart.y) < 4
-    startClientPoint.current = null
+    const drag = selectionDrag.current
+    if (!image || !drag || drag.pointerId !== event.pointerId) return
+    selectionDrag.current = null
+    const isClick = Math.hypot(event.clientX - drag.clientStart.x, event.clientY - drag.clientStart.y) < 4
     if (isClick) {
       const index = redactionAtPoint(history.applied, pointOnCanvas(event))
-      startPoint.current = null
       setSelection(null)
       setSelectedRedaction(index)
       if (index !== null) setMessage('Ocultação selecionada. Use “Remover ocultação” para removê-la.')
       return
     }
-    const rect = rectFromPoints(startPoint.current, pointOnCanvas(event), image.width, image.height)
-    startPoint.current = null
+    const rect = rectFromPoints(drag.start, pointOnCanvas(event), image.width, image.height)
     setSelection(rect)
     if (rect) setMessage('Região marcada. Clique em “Ocultar região” para cobri-la.')
   }
 
-  const onPointerCancel = () => {
-    startPoint.current = null
-    startClientPoint.current = null
-    setSelection(null)
+  const onPointerCancel = (event: PointerEvent<HTMLCanvasElement>) => {
+    // pointerup já encerrou o arraste antes da perda normal de captura.
+    if (selectionDrag.current?.pointerId !== event.pointerId) return
+    cancelSelection()
   }
 
   const onHide = () => {
@@ -437,6 +470,7 @@ export default function App() {
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerCancel}
+                onLostPointerCapture={onPointerCancel}
               />
             </div>
             {draggingFile && (
