@@ -208,7 +208,7 @@ test('avisa antes de cada saída sem tarjas e executa somente a ação escolhida
   await page.getByRole('button', { name: 'Baixar PNG' }).click()
   await page.getByRole('button', { name: 'Continuar mesmo assim' }).click()
   await expect.poll(() => page.evaluate(() => window.__downloadBlob?.size ?? 0)).toBeGreaterThan(0)
-  await expect(page.getByRole('status')).toHaveText('PNG salvo sem ocultações.')
+  await expect(page.getByRole('status')).toHaveText('Download do PNG sem ocultações solicitado ao navegador.')
 })
 
 test('exporta tarjas nos pixels sem aviso e limpa o estado ao substituir a imagem', async ({ page }) => {
@@ -243,7 +243,7 @@ test('exporta tarjas nos pixels sem aviso e limpa o estado ao substituir a image
   await page.getByRole('button', { name: 'Baixar PNG' }).click()
   await expect(page.getByRole('dialog')).not.toBeVisible()
   await expect.poll(() => page.evaluate(() => window.__downloadBlob?.size ?? 0)).toBeGreaterThan(0)
-  await expect(page.getByRole('status')).toHaveText('PNG com ocultações salvo.')
+  await expect(page.getByRole('status')).toHaveText('Download do PNG com ocultações solicitado ao navegador.')
   const downloadedPixel = await page.evaluate(async () => {
     const bitmap = await createImageBitmap(window.__downloadBlob!)
     const canvas = document.createElement('canvas')
@@ -336,7 +336,7 @@ test('revoga a URL temporária mesmo se o download falhar após sua criação', 
   })
 
   await page.getByRole('button', { name: 'Baixar PNG' }).click()
-  await expect(page.getByRole('status')).toHaveText('Não foi possível gerar o PNG desta imagem.')
+  await expect(page.getByRole('status')).toHaveText('Não foi possível solicitar o download. Tente novamente.')
   await expect.poll(() => page.evaluate(() => window.__revokedUrls?.length ?? 0)).toBe(1)
   await expect(page.locator('a[download]')).toHaveCount(0)
 })

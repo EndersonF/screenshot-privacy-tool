@@ -2,7 +2,7 @@ import { CircleAlert, CircleCheck } from 'lucide-react'
 
 export type StatusTone = 'info' | 'success' | 'error'
 
-export type Status = { text: string; tone: StatusTone }
+export type Status = { text: string; tone: StatusTone; downloadRequested?: boolean }
 
 type FeedbackProps = { status: Status; className?: string }
 
