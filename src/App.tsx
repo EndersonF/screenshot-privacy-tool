@@ -63,8 +63,8 @@ export default function App() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const pendingActionRef = useRef<PendingAction | null>(null)
 
-  const setMessage = useCallback((text: string, tone: StatusTone = 'info') => {
-    setStatus({ text, tone })
+  const setMessage = useCallback((text: string, tone: StatusTone = 'info', downloadRequested = false) => {
+    setStatus({ text, tone, downloadRequested })
   }, [])
 
   const cancelSelection = useCallback(() => {
@@ -392,19 +392,26 @@ export default function App() {
 
   const performDownload = async () => {
     if (!image) return
+    let png: Blob
+    try {
+      png = await exportPng(image, history.applied)
+    } catch {
+      setMessage('Não foi possível gerar o PNG desta imagem.', 'error')
+      return
+    }
+
     let url: string | null = null
     let link: HTMLAnchorElement | null = null
     try {
-      const png = await exportPng(image, history.applied)
       url = URL.createObjectURL(png)
       link = document.createElement('a')
       link.href = url
       link.download = 'screenshot-protegido.png'
       document.body.append(link)
       link.click()
-      setMessage(history.applied.length > 0 ? 'PNG com ocultações salvo.' : 'PNG salvo sem ocultações.', 'success')
+      setMessage(history.applied.length > 0 ? 'Download do PNG com ocultações solicitado ao navegador.' : 'Download do PNG sem ocultações solicitado ao navegador.', 'success', true)
     } catch {
-      setMessage('Não foi possível gerar o PNG desta imagem.', 'error')
+      setMessage('Não foi possível solicitar o download. Tente novamente.', 'error')
     } finally {
       link?.remove()
       if (url) {
@@ -484,7 +491,15 @@ export default function App() {
           </main>
 
           <footer className="statusbar">
-            <Feedback status={status} />
+            <div className="statusbar__feedback">
+              <Feedback status={status} />
+              {status.downloadRequested && (
+                <details className="download-help">
+                  <summary>Não encontrou o arquivo?</summary>
+                  <p>Confira a pasta de downloads definida pelo navegador. No iPhone, procure na lista de downloads do Safari ou no app Arquivos. O PNG não aparece automaticamente no Fotos.</p>
+                </details>
+              )}
+            </div>
             <span className="statusbar__meta">
               <span>Cole ou arraste outra imagem para trocar</span>
               <span className="statusbar__item">
