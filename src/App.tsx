@@ -18,6 +18,8 @@ import { PublicInformation } from './components/PublicInformation'
 import { EditorToolbar } from './components/EditorToolbar'
 import { EmptyState } from './components/EmptyState'
 import { Feedback } from './components/Feedback'
+import { ZoomControls } from './components/ZoomControls'
+import { useImageView } from './useImageView'
 import type { Status, StatusTone } from './components/Feedback'
 
 const MODIFIER_KEY = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent) ? '⌘' : 'Ctrl'
@@ -27,6 +29,7 @@ type PendingAction =
   | { kind: 'export'; format: 'copy' | 'download' }
 
 type SelectionDrag = { pointerId: number; pointerType: string; start: Point; clientStart: Point }
+type PanDrag = { pointerId: number; start: Point; scroll: Point }
 
 function pointOnCanvas(event: PointerEvent<HTMLCanvasElement>): Point {
   const canvas = event.currentTarget
@@ -42,7 +45,6 @@ function isSupportedImage(file: File): boolean {
 }
 
 export default function App() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const chooseButtonRef = useRef<HTMLButtonElement>(null)
   const newImageButtonRef = useRef<HTMLButtonElement>(null)
@@ -50,10 +52,15 @@ export default function App() {
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
   const selectionDrag = useRef<SelectionDrag | null>(null)
+  const panDrag = useRef<PanDrag | null>(null)
+  const captureTarget = useRef<HTMLElement | null>(null)
+  const navigationTouches = useRef(new Set<number>())
   const activeTouches = useRef(new Set<number>())
   const touchGestureBlocked = useRef(false)
   const loadSequence = useRef(0)
   const [image, setImage] = useState<ImageBitmap | null>(null)
+  const [moving, setMoving] = useState(false)
+  const [gestureActive, setGestureActive] = useState(false)
   const [history, setHistory] = useState(emptyHistory)
   const historyRef = useRef(history)
   const [selection, setSelection] = useState<Rect | null>(null)
@@ -68,11 +75,38 @@ export default function App() {
   }, [])
 
   const cancelSelection = useCallback(() => {
+    const drag = selectionDrag.current
     selectionDrag.current = null
+    if (drag) {
+      if (captureTarget.current?.hasPointerCapture(drag.pointerId)) captureTarget.current.releasePointerCapture(drag.pointerId)
+      captureTarget.current = null
+    }
+    setGestureActive(panDrag.current !== null || navigationTouches.current.size > 0)
     setSelection(null)
     setSelectedRedaction(null)
     setMessage('Seleção cancelada.')
   }, [setMessage])
+
+  const cancelActiveGesture = useCallback(() => {
+    if (selectionDrag.current) cancelSelection()
+    const pan = panDrag.current
+    panDrag.current = null
+    if (pan && captureTarget.current?.hasPointerCapture(pan.pointerId)) captureTarget.current.releasePointerCapture(pan.pointerId)
+    captureTarget.current = null
+    setGestureActive(navigationTouches.current.size > 0)
+  }, [cancelSelection])
+
+  const { canvasRef, viewportRef, scale, canZoomIn, canZoomOut, zoom, fit } = useImageView(image, cancelActiveGesture)
+
+  useEffect(() => {
+    // Rolar a página ou a área da imagem durante uma seleção muda sua geometria.
+    // A navegação normal não redesenha o bitmap nem modifica uma seleção concluída.
+    const onScroll = () => {
+      if (selectionDrag.current) cancelSelection()
+    }
+    window.addEventListener('scroll', onScroll, true)
+    return () => window.removeEventListener('scroll', onScroll, true)
+  }, [cancelSelection])
 
   useEffect(() => {
     const onTouchDown = (event: globalThis.PointerEvent) => {
@@ -87,16 +121,28 @@ export default function App() {
       if (event.pointerType !== 'touch') return
       activeTouches.current.delete(event.pointerId)
       if (activeTouches.current.size === 0) touchGestureBlocked.current = false
+      // Em rolagem nativa, pointercancel acontece antes de levantar o dedo.
+      if (event.type !== 'pointercancel') navigationTouches.current.delete(event.pointerId)
+      if (!selectionDrag.current && !panDrag.current && navigationTouches.current.size === 0) setGestureActive(false)
+    }
+    const onNativeTouchEnd = (event: TouchEvent) => {
+      if (event.touches.length > 0) return
+      navigationTouches.current.clear()
+      if (!selectionDrag.current && !panDrag.current) setGestureActive(false)
     }
     // Observa também contatos fora do canvas, inclusive após perda de captura.
     // O bloqueio só termina quando todos os contatos de toque saem.
     window.addEventListener('pointerdown', onTouchDown, true)
     window.addEventListener('pointerup', onTouchEnd, true)
     window.addEventListener('pointercancel', onTouchEnd, true)
+    window.addEventListener('touchend', onNativeTouchEnd, { capture: true, passive: true })
+    window.addEventListener('touchcancel', onNativeTouchEnd, { capture: true, passive: true })
     return () => {
       window.removeEventListener('pointerdown', onTouchDown, true)
       window.removeEventListener('pointerup', onTouchEnd, true)
       window.removeEventListener('pointercancel', onTouchEnd, true)
+      window.removeEventListener('touchend', onNativeTouchEnd, true)
+      window.removeEventListener('touchcancel', onNativeTouchEnd, true)
     }
   }, [cancelSelection])
 
@@ -113,24 +159,32 @@ export default function App() {
   }, [])
 
   const commitImage = useCallback((bitmap: ImageBitmap) => {
+    cancelActiveGesture()
+    navigationTouches.current.clear()
+    setGestureActive(false)
     setImage(bitmap)
+    setMoving(false)
     updateHistory(emptyHistory)
     setSelection(null)
     setSelectedRedaction(null)
     selectionDrag.current = null
     setMessage('Arraste sobre a imagem para marcar o que deseja ocultar.')
-  }, [setMessage, updateHistory])
+  }, [cancelActiveGesture, setMessage, updateHistory])
 
   const clearEditor = useCallback(() => {
+    cancelActiveGesture()
+    navigationTouches.current.clear()
+    setGestureActive(false)
     loadSequence.current += 1
     setImage(null)
+    setMoving(false)
     updateHistory(emptyHistory)
     setSelection(null)
     setSelectedRedaction(null)
     selectionDrag.current = null
     setDraggingFile(false)
     setStatus({ text: '', tone: 'info' })
-  }, [updateHistory])
+  }, [cancelActiveGesture, updateHistory])
 
   const requestImage = useCallback(async (file: File) => {
     if (pendingActionRef.current) return
@@ -239,6 +293,12 @@ export default function App() {
     loadSequence.current += 1
     const action = pendingActionRef.current
     if (action?.kind === 'replace') action.bitmap.close()
+    const drag = selectionDrag.current ?? panDrag.current
+    if (drag && captureTarget.current?.hasPointerCapture(drag.pointerId)) captureTarget.current.releasePointerCapture(drag.pointerId)
+    captureTarget.current = null
+    selectionDrag.current = null
+    panDrag.current = null
+    navigationTouches.current.clear()
   }, [])
   useEffect(() => () => { image?.close() }, [image])
 
@@ -287,7 +347,7 @@ export default function App() {
     } catch {
       setMessage('Não foi possível exibir a imagem neste navegador.', 'error')
     }
-  }, [image, history.applied, selection, selectedRedaction, setMessage])
+  }, [image, history.applied, selection, selectedRedaction, scale, canvasRef, setMessage])
 
   const onDragOver = (event: DragEvent<HTMLElement>) => {
     event.preventDefault()
@@ -307,8 +367,10 @@ export default function App() {
   }
 
   const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (!image || event.button !== 0 || selectionDrag.current || touchGestureBlocked.current) return
+    if (!image || moving || event.button !== 0 || selectionDrag.current || touchGestureBlocked.current) return
     event.currentTarget.setPointerCapture(event.pointerId)
+    captureTarget.current = event.currentTarget
+    setGestureActive(true)
     selectionDrag.current = {
       pointerId: event.pointerId,
       pointerType: event.pointerType,
@@ -329,6 +391,9 @@ export default function App() {
     const drag = selectionDrag.current
     if (!image || !drag || drag.pointerId !== event.pointerId) return
     selectionDrag.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    captureTarget.current = null
+    setGestureActive(false)
     const isClick = Math.hypot(event.clientX - drag.clientStart.x, event.clientY - drag.clientStart.y) < 4
     if (isClick) {
       const index = redactionAtPoint(history.applied, pointOnCanvas(event))
@@ -346,6 +411,53 @@ export default function App() {
     // pointerup já encerrou o arraste antes da perda normal de captura.
     if (selectionDrag.current?.pointerId !== event.pointerId) return
     cancelSelection()
+  }
+
+  const onPanDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!moving || event.button !== 0 || panDrag.current) return
+    const viewport = event.currentTarget
+    const bounds = viewport.getBoundingClientRect()
+    // Deixa as barras de rolagem nativas disponíveis também para o mouse.
+    if (event.clientX >= bounds.left + viewport.clientLeft + viewport.clientWidth
+      || event.clientY >= bounds.top + viewport.clientTop + viewport.clientHeight) return
+    if (event.pointerType === 'touch') {
+      // No modo mover, o navegador controla a rolagem com um dedo.
+      // Não capturamos nem bloqueamos esse gesto nativo.
+      navigationTouches.current.add(event.pointerId)
+      setGestureActive(true)
+      return
+    }
+    event.preventDefault()
+    viewport.focus({ preventScroll: true })
+    event.currentTarget.setPointerCapture(event.pointerId)
+    captureTarget.current = event.currentTarget
+    panDrag.current = {
+      pointerId: event.pointerId,
+      start: { x: event.clientX, y: event.clientY },
+      scroll: { x: event.currentTarget.scrollLeft, y: event.currentTarget.scrollTop },
+    }
+    setGestureActive(true)
+  }
+
+  const onPanMove = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = panDrag.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    event.currentTarget.scrollLeft = drag.scroll.x + drag.start.x - event.clientX
+    event.currentTarget.scrollTop = drag.scroll.y + drag.start.y - event.clientY
+  }
+
+  const onPanEnd = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'touch' || event.type === 'pointerup') navigationTouches.current.delete(event.pointerId)
+    if (panDrag.current?.pointerId === event.pointerId) {
+      panDrag.current = null
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+      captureTarget.current = null
+    }
+    if (!selectionDrag.current && !panDrag.current && navigationTouches.current.size === 0) setGestureActive(false)
+  }
+
+  const viewAction = (action: () => void) => {
+    if (!selectionDrag.current && !panDrag.current && navigationTouches.current.size === 0) action()
   }
 
   const onHide = () => {
@@ -455,6 +567,7 @@ export default function App() {
             canUndo={history.past.length > 0}
             canRedo={history.future.length > 0}
             hasRedactions={history.applied.length > 0}
+            moving={moving}
             onHide={onHide}
             onRemove={onRemove}
             onUndo={onUndo}
@@ -467,19 +580,46 @@ export default function App() {
 
           <main className="workspace">
             <h1 className="sr-only">Editar screenshot</h1>
+            <ZoomControls
+              scale={scale}
+              moving={moving}
+              busy={gestureActive}
+              canZoomIn={canZoomIn}
+              canZoomOut={canZoomOut}
+              onZoomIn={() => viewAction(() => zoom(1))}
+              onZoomOut={() => viewAction(() => zoom(-1))}
+              onFit={() => viewAction(fit)}
+              onToggleMoving={() => viewAction(() => setMoving((current) => !current))}
+            />
             <div className="stage">
-              <canvas
-                ref={canvasRef}
-                className="editor-canvas"
-                width={image.width}
-                height={image.height}
-                aria-label="Screenshot; arraste o mouse para selecionar a região a ocultar"
-                onPointerDown={onPointerDown}
-                onPointerMove={onPointerMove}
-                onPointerUp={onPointerUp}
-                onPointerCancel={onPointerCancel}
-                onLostPointerCapture={onPointerCancel}
-              />
+              <div
+                ref={viewportRef}
+                className={`image-viewport${moving ? ' image-viewport--moving' : ''}${gestureActive && moving ? ' image-viewport--dragging' : ''}`}
+                role="region"
+                aria-label="Visualização da imagem"
+                aria-describedby="view-mode-hint"
+                tabIndex={0}
+                onPointerDown={onPanDown}
+                onPointerMove={onPanMove}
+                onPointerUp={onPanEnd}
+                onPointerCancel={onPanEnd}
+                onLostPointerCapture={onPanEnd}
+              >
+                <div className="image-content">
+                  <canvas
+                    ref={canvasRef}
+                    className="editor-canvas"
+                    width={image.width}
+                    height={image.height}
+                    aria-label={moving ? 'Screenshot; modo mover imagem' : 'Screenshot; arraste para selecionar a região a ocultar'}
+                    onPointerDown={onPointerDown}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                    onPointerCancel={onPointerCancel}
+                    onLostPointerCapture={onPointerCancel}
+                  />
+                </div>
+              </div>
             </div>
             {draggingFile && (
               <div className="drop-overlay" aria-hidden="true">
