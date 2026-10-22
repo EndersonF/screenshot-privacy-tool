@@ -211,10 +211,18 @@ test('ajuda de download abre e fecha pelo teclado fora da região de anúncio', 
   await expect(help).toHaveJSProperty('open', false)
   await expect(explanation).toBeHidden()
 
-  // Chega à ajuda pela ordem natural de Tab, a partir do último controle da toolbar.
+  // Chega à ajuda por Tab, passando pelos controles de visualização e pela imagem.
   await page.getByRole('button', { name: 'Copiar imagem protegida' }).focus()
-  await page.keyboard.press('Tab')
-  await expect(summary).toBeFocused()
+  for (const control of [
+    page.getByRole('button', { name: 'Ampliar', exact: true }),
+    page.getByRole('button', { name: 'Imagem inteira', exact: true }),
+    page.getByRole('button', { name: 'Mover imagem', exact: true }),
+    page.getByRole('region', { name: 'Visualização da imagem', exact: true }),
+    summary,
+  ]) {
+    await page.keyboard.press('Tab')
+    await expect(control).toBeFocused()
+  }
   await page.keyboard.press('Enter')
   await expect(help).toHaveJSProperty('open', true)
   await expect(explanation).toBeVisible()

@@ -8,6 +8,7 @@ type EditorToolbarProps = {
   canUndo: boolean
   canRedo: boolean
   hasRedactions: boolean
+  moving: boolean
   onHide: () => void
   onRemove: () => void
   onUndo: () => void
@@ -24,6 +25,7 @@ export function EditorToolbar({
   canUndo,
   canRedo,
   hasRedactions,
+  moving,
   onHide,
   onRemove,
   onUndo,
@@ -49,7 +51,7 @@ export function EditorToolbar({
 
       <div className="editor-tools">
         <p id="selection-hint" className={`selection-hint${canHide ? ' selection-hint--pending' : ''}`}>
-          {canHide ? 'Confirme em “Ocultar região”.' : 'Arraste na imagem para selecionar.'}
+          {canHide ? 'Confirme em “Ocultar região”.' : moving ? 'Desative “Mover imagem” para selecionar.' : 'Arraste na imagem para selecionar.'}
         </p>
         <div className="tool-group tool-group--edit" role="group" aria-label="Edição">
           <button
