@@ -1,6 +1,8 @@
 import { Copy, Download, EyeOff, Redo2, Trash2, Undo2 } from 'lucide-react'
 import type { RefObject } from 'react'
 import { Brand } from './Brand'
+import { Feedback } from './Feedback'
+import type { Status } from './Feedback'
 
 type EditorToolbarProps = {
   canHide: boolean
@@ -17,6 +19,8 @@ type EditorToolbarProps = {
   onDownload: () => void
   onNewImage: () => void
   newImageButtonRef: RefObject<HTMLButtonElement | null>
+  /** Retorno da última cópia ou download; `null` quando outra mensagem o substituiu. */
+  exportStatus: Status | null
 }
 
 export function EditorToolbar({
@@ -34,7 +38,9 @@ export function EditorToolbar({
   onDownload,
   onNewImage,
   newImageButtonRef,
+  exportStatus,
 }: EditorToolbarProps) {
+  const showReview = hasRedactions && !exportStatus
   return (
     <header className="topbar">
       <div className="topbar__side">
@@ -96,7 +102,7 @@ export function EditorToolbar({
 
       <div className="topbar__side topbar__side--end">
         <div className="export-actions">
-          <div className="tool-group tool-group--export" role="group" aria-label="Exportação" aria-describedby={hasRedactions ? 'export-hint' : undefined}>
+          <div className="tool-group tool-group--export" role="group" aria-label="Exportação" aria-describedby={showReview ? 'export-hint' : undefined}>
             <button type="button" className="btn btn--secondary" onClick={onDownload}>
               <Download size={16} strokeWidth={2} aria-hidden="true" />
               Baixar PNG
@@ -106,7 +112,19 @@ export function EditorToolbar({
               Copiar imagem protegida
             </button>
           </div>
-          {hasRedactions && (
+          {exportStatus ? (
+            // Usa o espaço já reservado para a revisão. O anúncio continua
+            // somente na região role="status" do App; este texto é visual.
+            <div className="export-feedback">
+              <Feedback status={exportStatus} />
+              {exportStatus.downloadRequested && (
+                <details className="download-help">
+                  <summary>Não encontrou o arquivo?</summary>
+                  <p>Confira a pasta de downloads definida pelo navegador. No iPhone, procure na lista de downloads do Safari ou no app Arquivos. O PNG não aparece automaticamente no Fotos.</p>
+                </details>
+              )}
+            </div>
+          ) : showReview && (
             <p id="export-hint" className="export-hint">Antes de compartilhar, confira se ocultou todas as informações necessárias.</p>
           )}
         </div>

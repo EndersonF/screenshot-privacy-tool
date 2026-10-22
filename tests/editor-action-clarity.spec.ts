@@ -69,14 +69,17 @@ async function checkLayout(page: Page, width: number, height: number) {
   }
   const hint = await visibleWithin(page.locator('.selection-hint'), width, height)
   const hide = (await page.getByRole('button', { name: 'Ocultar região', exact: true }).boundingBox())!
-  expect(hide.y - (hint.y + hint.height)).toBeGreaterThanOrEqual(0)
-  expect(hide.y - (hint.y + hint.height)).toBeLessThanOrEqual(9)
+  const hintGap = width > 1100
+    ? hint.y - (hide.y + hide.height)
+    : hide.y - (hint.y + hint.height)
+  expect(hintGap).toBeGreaterThanOrEqual(0)
+  expect(hintGap).toBeLessThanOrEqual(9)
   const canvas = await visibleWithin(page.locator('canvas'), width, height)
   expect(canvas.y).toBeGreaterThanOrEqual(toolbar.y + toolbar.height)
   const footer = (await page.locator('.statusbar').boundingBox())!
   expect(canvas.y + canvas.height).toBeLessThanOrEqual(footer.y + 1)
   await expect(page.locator('.feedback__text')).toHaveCSS('opacity', '1')
-  await visibleWithin(page.locator('.statusbar .feedback__text'), width, height)
+  await visibleWithin(page.locator('.feedback__text'), width, height)
   if (await page.locator('.export-hint').count()) {
     const review = await visibleWithin(page.locator('.export-hint'), width, height)
     const actions = (await page.getByRole('group', { name: 'Exportação' }).boundingBox())!
@@ -176,6 +179,10 @@ for (const { width, height } of [
     await expect(page.getByRole('status')).toHaveText('Download do PNG com ocultações solicitado ao navegador.')
     await checkLayout(page, width, height)
     await visibleWithin(page.locator('.download-help summary'), width, height)
+    await expect(page.locator('.export-feedback .feedback__text')).toHaveText('Download do PNG com ocultações solicitado ao navegador.')
+    await expect(page.locator('.export-hint')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Desfazer', exact: true }).click()
+    await expect(page.locator('.export-feedback')).toHaveCount(0)
     await expect(page.locator('.export-hint')).toHaveText(REVIEW)
   })
 }

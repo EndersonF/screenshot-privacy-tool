@@ -70,8 +70,14 @@ export default function App() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const pendingActionRef = useRef<PendingAction | null>(null)
 
-  const setMessage = useCallback((text: string, tone: StatusTone = 'info', downloadRequested = false) => {
-    setStatus({ text, tone, downloadRequested })
+  const setMessage = useCallback((text: string, tone: StatusTone = 'info') => {
+    setStatus({ text, tone })
+  }, [])
+
+  // Retorno de copiar/baixar: aparece junto aos botões que o originaram.
+  // Qualquer mensagem posterior do editor o substitui, como antes.
+  const setExportMessage = useCallback((text: string, tone: StatusTone, downloadRequested = false) => {
+    setStatus({ text, tone, downloadRequested, scope: 'export' })
   }, [])
 
   const cancelSelection = useCallback(() => {
@@ -490,15 +496,15 @@ export default function App() {
   const performCopy = async () => {
     if (!image) return
     if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
-      setMessage('Este navegador não permite copiar imagens aqui. Use “Baixar PNG”.', 'error')
+      setExportMessage('Este navegador não permite copiar imagens aqui. Use “Baixar PNG”.', 'error')
       return
     }
     try {
       const png = exportPng(image, history.applied)
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
-      setMessage(history.applied.length > 0 ? 'Imagem com ocultações copiada.' : 'Imagem copiada sem ocultações.', 'success')
+      setExportMessage(history.applied.length > 0 ? 'Imagem com ocultações copiada.' : 'Imagem copiada sem ocultações.', 'success')
     } catch {
-      setMessage('Não foi possível copiar. Verifique a permissão da área de transferência ou use “Baixar PNG”.', 'error')
+      setExportMessage('Não foi possível copiar. Verifique a permissão da área de transferência ou use “Baixar PNG”.', 'error')
     }
   }
 
@@ -508,7 +514,7 @@ export default function App() {
     try {
       png = await exportPng(image, history.applied)
     } catch {
-      setMessage('Não foi possível gerar o PNG desta imagem.', 'error')
+      setExportMessage('Não foi possível gerar o PNG desta imagem.', 'error')
       return
     }
 
@@ -521,9 +527,9 @@ export default function App() {
       link.download = 'screenshot-protegido.png'
       document.body.append(link)
       link.click()
-      setMessage(history.applied.length > 0 ? 'Download do PNG com ocultações solicitado ao navegador.' : 'Download do PNG sem ocultações solicitado ao navegador.', 'success', true)
+      setExportMessage(history.applied.length > 0 ? 'Download do PNG com ocultações solicitado ao navegador.' : 'Download do PNG sem ocultações solicitado ao navegador.', 'success', true)
     } catch {
-      setMessage('Não foi possível solicitar o download. Tente novamente.', 'error')
+      setExportMessage('Não foi possível solicitar o download. Tente novamente.', 'error')
     } finally {
       link?.remove()
       if (url) {
@@ -576,6 +582,7 @@ export default function App() {
             onDownload={onDownload}
             onNewImage={onNewImage}
             newImageButtonRef={newImageButtonRef}
+            exportStatus={status.scope === 'export' ? status : null}
           />
 
           <main className="workspace">
@@ -633,13 +640,8 @@ export default function App() {
 
           <footer className="statusbar">
             <div className="statusbar__feedback">
-              <Feedback status={status} />
-              {status.downloadRequested && (
-                <details className="download-help">
-                  <summary>Não encontrou o arquivo?</summary>
-                  <p>Confira a pasta de downloads definida pelo navegador. No iPhone, procure na lista de downloads do Safari ou no app Arquivos. O PNG não aparece automaticamente no Fotos.</p>
-                </details>
-              )}
+              {/* O retorno da exportação é exibido somente na toolbar, sem duplicação. */}
+              {status.scope !== 'export' && <Feedback status={status} />}
             </div>
             <span className="statusbar__meta">
               <span>Cole ou arraste outra imagem para trocar</span>
