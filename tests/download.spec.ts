@@ -41,6 +41,15 @@ async function lifecycle(page: Page) {
   return page.evaluate(() => window.__downloadLifecycle)
 }
 
+async function expectExportFeedback(page: Page, text: string) {
+  await expect(page.getByRole('status')).toHaveCount(1)
+  await expect(page.getByRole('status')).toHaveText(text)
+  await expect(page.locator('.feedback')).toHaveCount(1)
+  await expect(page.locator('.export-feedback .feedback__text')).toHaveText(text)
+  await expect(page.locator('.export-feedback > .feedback')).toHaveAttribute('aria-hidden', 'true')
+  await expect(page.locator('.statusbar .feedback')).toHaveCount(0)
+}
+
 async function downloadPng(page: Page, withoutRedactions = false) {
   const requested = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Baixar PNG' }).click()
@@ -130,7 +139,7 @@ test('downloads com tarjas preservam PNG, dimensões e pixels e revogam as URLs 
   expect(first.covered).toEqual([0, 0, 0, 255])
   expect(first.outside).toEqual([238, 68, 68, 255])
   expect(first.allOriginal).toBe(false)
-  await expect(page.getByRole('status')).toHaveText('Download do PNG com ocultações solicitado ao navegador.')
+  await expectExportFeedback(page, 'Download do PNG com ocultações solicitado ao navegador.')
   await expect(page.locator('details.download-help summary')).toHaveText('Não encontrou o arquivo?')
   await expect(page.locator('details.download-help')).toHaveJSProperty('open', false)
   const firstState = await lifecycle(page)
@@ -174,7 +183,7 @@ test('download sem tarjas mantém revisão, pixels originais e feedback preciso'
   expect({ width: png.width, height: png.height }).toEqual({ width: 120, height: 90 })
   expect(png.allOriginal).toBe(true)
   expect((await lifecycle(page)).created[0].type).toBe('image/png')
-  await expect(page.getByRole('status')).toHaveText('Download do PNG sem ocultações solicitado ao navegador.')
+  await expectExportFeedback(page, 'Download do PNG sem ocultações solicitado ao navegador.')
   await expect(page.locator('details.download-help summary')).toHaveText('Não encontrou o arquivo?')
   await expect(page.locator('details.download-help')).toHaveJSProperty('open', false)
 })
@@ -188,7 +197,7 @@ for (const fault of ['generate', 'url', 'click'] as const) {
     await page.evaluate((value) => { window.__downloadFault = value }, fault)
 
     await page.getByRole('button', { name: 'Baixar PNG' }).click()
-    await expect(page.getByRole('status')).toHaveText(fault === 'generate'
+    await expectExportFeedback(page, fault === 'generate'
       ? 'Não foi possível gerar o PNG desta imagem.'
       : 'Não foi possível solicitar o download. Tente novamente.')
     const state = await lifecycle(page)
@@ -202,6 +211,17 @@ for (const fault of ['generate', 'url', 'click'] as const) {
   })
 }
 
+test('cópia indisponível informa a alternativa junto aos botões sem duplicar anúncios', async ({ page }) => {
+  await applyRedaction(page)
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined })
+  })
+  await page.getByRole('button', { name: 'Copiar imagem protegida' }).click()
+  await expectExportFeedback(page, 'Este navegador não permite copiar imagens aqui. Use “Baixar PNG”.')
+  await expect(page.getByRole('button', { name: 'Baixar PNG' })).toBeEnabled()
+  await expect(page.locator('details.download-help')).toHaveCount(0)
+})
+
 test('ajuda de download abre e fecha pelo teclado fora da região de anúncio', async ({ page }) => {
   await applyRedaction(page)
   await downloadPng(page)
@@ -211,18 +231,10 @@ test('ajuda de download abre e fecha pelo teclado fora da região de anúncio', 
   await expect(help).toHaveJSProperty('open', false)
   await expect(explanation).toBeHidden()
 
-  // Chega à ajuda por Tab, passando pelos controles de visualização e pela imagem.
+  // A ajuda agora é o próximo controle depois das ações de exportação.
   await page.getByRole('button', { name: 'Copiar imagem protegida' }).focus()
-  for (const control of [
-    page.getByRole('button', { name: 'Ampliar', exact: true }),
-    page.getByRole('button', { name: 'Imagem inteira', exact: true }),
-    page.getByRole('button', { name: 'Mover imagem', exact: true }),
-    page.getByRole('region', { name: 'Visualização da imagem', exact: true }),
-    summary,
-  ]) {
-    await page.keyboard.press('Tab')
-    await expect(control).toBeFocused()
-  }
+  await page.keyboard.press('Tab')
+  await expect(summary).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(help).toHaveJSProperty('open', true)
   await expect(explanation).toBeVisible()
@@ -237,8 +249,9 @@ test('ajuda de download abre e fecha pelo teclado fora da região de anúncio', 
     element.closest('[aria-hidden="true"], [role="status"], [aria-live]:not([aria-live="off"])') === null)).toBe(true)
   expect(await explanation.evaluate((element) =>
     element.closest('[aria-hidden="true"], [role="status"], [aria-live]:not([aria-live="off"])') === null)).toBe(true)
-  await expect(page.locator('.statusbar__feedback > .feedback[aria-hidden="true"]')).toHaveCount(1)
-  await expect(page.locator('.statusbar__feedback > details.download-help')).toHaveCount(1)
+  await expect(page.locator('.export-feedback > .feedback[aria-hidden="true"]')).toHaveCount(1)
+  await expect(page.locator('.export-feedback > details.download-help')).toHaveCount(1)
+  await expect(page.locator('.statusbar .feedback, .statusbar details.download-help')).toHaveCount(0)
 
   await page.keyboard.press('Space')
   await expect(help).toHaveJSProperty('open', false)
@@ -263,49 +276,111 @@ for (const { width, height } of [
   { width: 390, height: 844 },
   { width: 1440, height: 900 },
 ]) {
-  test(`feedback e ajuda ficam perceptíveis na tela de ${width}x${height}px`, async ({ page }, testInfo) => {
+  test(`cópia, download, ajuda e erro ficam junto às ações em ${width}x${height}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
     await applyRedaction(page)
-    await downloadPng(page)
     const help = page.locator('details.download-help')
     const summary = help.locator('summary')
-    const feedback = page.locator('.statusbar__feedback .feedback__text')
-
-    // Sem rolar ou mover o foco: o retorno da ação já deve estar perceptível.
-    expect(await page.evaluate(() => scrollY)).toBe(0)
-    await expect(feedback).toHaveCSS('opacity', '1')
-
-    for (const open of [false, true]) {
-      if (open) await summary.click()
-      await expect(help).toHaveJSProperty('open', open)
-      if (open) await expect(help.locator('p')).toBeVisible()
-      else await expect(help.locator('p')).toBeHidden()
+    const feedback = page.locator('.export-feedback .feedback__text')
+    const controls = page.getByRole('button').filter({ hasText: /^(Nova imagem|Ocultar região|Baixar PNG|Copiar imagem protegida)$/ })
+    const initialControlBounds = await controls.evaluateAll((buttons) =>
+      buttons.map((button) => {
+        const { y, height } = button.getBoundingClientRect()
+        return { y, height }
+      }))
+    const checkLayout = async (state: string) => {
+      // Sem rolar ou focar a mensagem: ela já está perceptível junto à ação.
+      expect(await page.evaluate(() => scrollY)).toBe(0)
+      await expect(feedback).toHaveCSS('opacity', '1')
       const toolbar = (await page.locator('.topbar').boundingBox())!
-      for (const element of [feedback, summary]) {
+      const actions = (await page.getByRole('group', { name: 'Exportação' }).boundingBox())!
+      if (width > 1100) {
+        const currentControlBounds = await controls.evaluateAll((buttons) =>
+          buttons.map((button) => {
+            const { y, height } = button.getBoundingClientRect()
+            return { y, height }
+          }))
+        // A ajuda não deve deslocar marca, edição ou exportação no desktop.
+        expect(currentControlBounds).toEqual(initialControlBounds)
+        const centers = currentControlBounds.map(({ y, height }) => y + height / 2)
+        expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(1)
+      }
+      const elements = [feedback]
+      if (await help.count()) elements.push(summary)
+      if (await help.count() && await help.evaluate((element: HTMLDetailsElement) => element.open)) elements.push(help.locator('p'))
+      for (const element of elements) {
+        await expect(element).toBeVisible()
         const bounds = (await element.boundingBox())!
-        expect(bounds.y).toBeGreaterThanOrEqual(toolbar.y + toolbar.height)
+        expect(bounds.x).toBeGreaterThanOrEqual(0)
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(width + 1)
+        expect(bounds.y).toBeGreaterThanOrEqual(actions.y + actions.height)
+        expect(bounds.y + bounds.height).toBeLessThanOrEqual(toolbar.y + toolbar.height + 1)
         expect(bounds.y + bounds.height).toBeLessThanOrEqual(height + 1)
       }
-      for (const name of ['Baixar PNG', 'Copiar imagem protegida']) {
-        const button = page.getByRole('button', { name })
-        await expect(button).toBeEnabled()
-        await expect(button).toBeVisible()
+      for (const button of await page.locator('.topbar button').all()) {
         await expect(button).toBeInViewport()
         const bounds = (await button.boundingBox())!
         expect(bounds.y).toBeGreaterThanOrEqual(0)
         expect(bounds.y + bounds.height).toBeLessThanOrEqual(toolbar.y + toolbar.height + 1)
       }
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      for (const selector of ['.statusbar', '.statusbar__feedback', '.statusbar__meta', 'details.download-help', 'details.download-help summary', ...(open ? ['details.download-help p'] : [])]) {
-        const bounds = await page.locator(selector).boundingBox()
-        expect(bounds, selector).not.toBeNull()
-        expect(bounds!.x, selector).toBeGreaterThanOrEqual(0)
-        expect(bounds!.x + bounds!.width, selector).toBeLessThanOrEqual(width + 1)
+      for (const name of ['Baixar PNG', 'Copiar imagem protegida']) {
+        const button = page.getByRole('button', { name })
+        await expect(button).toBeEnabled()
+        expect(await button.evaluate((element) => {
+          const bounds = element.getBoundingClientRect()
+          return document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)?.closest('button') === element
+        })).toBe(true)
       }
+      const viewport = (await page.locator('.image-viewport').boundingBox())!
+      expect(viewport.y).toBeGreaterThanOrEqual(toolbar.y + toolbar.height)
+      expect(viewport.height).toBeGreaterThan(0)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await expect(page.locator('.feedback')).toHaveCount(1)
+      await expect(page.getByRole('status')).toHaveCount(1)
       await page.screenshot({
-        path: testInfo.outputPath(`download-help-${width}-${open ? 'expanded' : 'closed'}.png`),
+        path: testInfo.outputPath(`export-${width}-${state}.png`),
         fullPage: true,
       })
     }
+
+    await expect(page.locator('.export-hint')).toBeVisible()
+    const beforeCopy = await page.locator('canvas').boundingBox()
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+        write: async (items: ClipboardItem[]) => { await items[0].getType('image/png') },
+      } })
+    })
+    await page.getByRole('button', { name: 'Copiar imagem protegida' }).click()
+    await expectExportFeedback(page, 'Imagem com ocultações copiada.')
+    await expect(page.locator('.export-hint')).toHaveCount(0)
+    await expect(help).toHaveCount(0)
+    await checkLayout('copy')
+    expect(await page.locator('canvas').boundingBox()).toEqual(beforeCopy)
+
+    await downloadPng(page)
+    await expectExportFeedback(page, 'Download do PNG com ocultações solicitado ao navegador.')
+    await expect(help).toHaveJSProperty('open', false)
+    await expect(help.locator('p')).toBeHidden()
+    await checkLayout('download')
+    await summary.click()
+    await expect(help).toHaveJSProperty('open', true)
+    await expect(help.locator('p')).toHaveText(DOWNLOAD_HELP)
+    await checkLayout('help-expanded')
+
+    await page.evaluate(() => { navigator.clipboard.write = async () => { throw new Error('Permissão negada para teste') } })
+    await page.getByRole('button', { name: 'Copiar imagem protegida' }).click()
+    await expectExportFeedback(page, 'Não foi possível copiar. Verifique a permissão da área de transferência ou use “Baixar PNG”.')
+    await expect(page.locator('.export-feedback .feedback--error')).toHaveCount(1)
+    await expect(help).toHaveCount(0)
+    await checkLayout('copy-error')
+
+    await applyRedaction(page)
+    await expect(page.getByRole('status')).toHaveText('Região ocultada.')
+    await expect(page.locator('.statusbar .feedback__text')).toHaveText('Região ocultada.')
+    await expect(page.locator('.export-feedback')).toHaveCount(0)
+    await expect(page.locator('.export-hint')).toBeVisible()
+    await expect(page.getByRole('group', { name: 'Exportação' })).toHaveAccessibleDescription('Antes de compartilhar, confira se ocultou todas as informações necessárias.')
+    await expect(page.locator('.feedback')).toHaveCount(1)
   })
 }

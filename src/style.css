@@ -755,21 +755,47 @@ kbd {
   max-width: 100%;
 }
 
+/* Retorno de copiar/baixar no espaço já reservado abaixo das ações. */
+.export-feedback {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.export-feedback .feedback {
+  display: flex;
+  align-items: flex-start;
+  font-weight: 500;
+}
+
+.export-feedback .feedback svg {
+  /* Alinha o ícone à primeira linha quando a mensagem quebra. */
+  margin-top: 2px;
+}
+
+.export-feedback .feedback__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .download-help {
   max-width: 56ch;
+  color: var(--text-secondary);
 }
 
 .download-help summary {
   width: fit-content;
-  padding: 4px 0;
+  padding: 2px 0;
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
 }
 
 .download-help p {
-  margin: 4px 0 2px;
-  line-height: 1.6;
+  margin: 2px 0 0;
+  line-height: 1.5;
 }
 
 .statusbar__item {
@@ -868,6 +894,37 @@ kbd {
 /* ------------------------------------------------------------------
    Responsivo
    ------------------------------------------------------------------ */
+@media (min-width: 1101px) {
+  .topbar {
+    /* A ajuda cresce para baixo, sem recentralizar os outros grupos. */
+    align-items: flex-start;
+    padding-block: 8px;
+  }
+
+  .topbar > .topbar__side:first-child {
+    min-height: 42px;
+  }
+
+  .editor-tools .tool-group--edit {
+    grid-row: 1;
+  }
+
+  .editor-tools .selection-hint {
+    grid-row: 2;
+  }
+
+  .export-actions {
+    /* Alinha os botões ao conteúdo interno do grupo de edição. */
+    width: min(100%, 400px);
+    padding-top: 4px;
+    min-height: 78px;
+  }
+
+  .tool-group--export {
+    justify-content: flex-end;
+  }
+}
+
 @media (max-width: 1100px) {
   .topbar {
     flex-wrap: wrap;
