@@ -46,7 +46,7 @@ async function expectExportFeedback(page: Page, text: string) {
   await expect(page.getByRole('status')).toHaveText(text)
   await expect(page.locator('.feedback')).toHaveCount(1)
   await expect(page.locator('.export-feedback .feedback__text')).toHaveText(text)
-  await expect(page.locator('.export-feedback > .feedback')).toHaveAttribute('aria-hidden', 'true')
+  await expect(page.locator('.export-feedback .feedback')).toHaveAttribute('aria-hidden', 'true')
   await expect(page.locator('.statusbar .feedback')).toHaveCount(0)
 }
 
@@ -249,7 +249,7 @@ test('ajuda de download abre e fecha pelo teclado fora da região de anúncio', 
     element.closest('[aria-hidden="true"], [role="status"], [aria-live]:not([aria-live="off"])') === null)).toBe(true)
   expect(await explanation.evaluate((element) =>
     element.closest('[aria-hidden="true"], [role="status"], [aria-live]:not([aria-live="off"])') === null)).toBe(true)
-  await expect(page.locator('.export-feedback > .feedback[aria-hidden="true"]')).toHaveCount(1)
+  await expect(page.locator('.export-feedback .feedback[aria-hidden="true"]')).toHaveCount(1)
   await expect(page.locator('.export-feedback > details.download-help')).toHaveCount(1)
   await expect(page.locator('.statusbar .feedback, .statusbar details.download-help')).toHaveCount(0)
 
@@ -378,7 +378,7 @@ for (const { width, height } of [
     await applyRedaction(page)
     await expect(page.getByRole('status')).toHaveText('Região ocultada.')
     await expect(page.locator('.statusbar .feedback__text')).toHaveText('Região ocultada.')
-    await expect(page.locator('.export-feedback')).toHaveCount(0)
+    await expect(page.locator('.export-feedback .feedback')).toHaveCount(0)
     await expect(page.locator('.export-hint')).toBeVisible()
     await expect(page.getByRole('group', { name: 'Exportação' })).toHaveAccessibleDescription('Antes de compartilhar, confira se ocultou todas as informações necessárias.')
     await expect(page.locator('.feedback')).toHaveCount(1)

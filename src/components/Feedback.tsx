@@ -6,7 +6,7 @@ export type StatusTone = 'info' | 'success' | 'error'
  * `scope: 'export'` identifica o retorno de copiar/baixar, exibido junto às
  * ações de exportação. As demais mensagens permanecem no rodapé do editor.
  */
-export type Status = { text: string; tone: StatusTone; downloadRequested?: boolean; scope?: 'export' }
+export type Status = { text: string; tone: StatusTone; scope?: 'export' }
 
 type FeedbackProps = { status: Status; className?: string }
 
