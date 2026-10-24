@@ -37,20 +37,90 @@ export function PublicInformation() {
 
   return (
     <div className="public-information">
-      <section id="como-funciona" className="public-section" aria-labelledby="how-title">
-        <h2 id="how-title">Como funciona</h2>
-        <ol className="how-steps">
-          <li><h3>Adicione</h3><p>Cole, arraste ou escolha uma imagem para começar.</p></li>
-          <li><h3>Oculte</h3><p>Selecione as áreas que deseja cobrir. Amplie a imagem para trabalhar com detalhes pequenos e confirme a ocultação.</p></li>
-          <li><h3>Compartilhe</h3><p>Revise o resultado e confira se ocultou todas as informações necessárias. Depois, copie ou baixe o PNG.</p></li>
-        </ol>
+      <section id="como-funciona" className="public-section public-section--how" aria-labelledby="how-title">
+        <div className="how-layout">
+          <div className="how-copy">
+            <div className="how-header">
+              <h2 id="how-title">Como funciona</h2>
+              <span className="how-arrow" aria-hidden="true">
+                <span className="how-arrow__line" />
+                <span className="how-arrow__badge">
+                  <svg className="how-arrow__icon how-arrow__icon--desktop" width="22" height="16" viewBox="0 0 22 16" fill="none" focusable="false">
+                    <path
+                      d="M2 8H19M19 8L13 2M19 8L13 14"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <svg className="how-arrow__icon how-arrow__icon--mobile" width="20" height="18" viewBox="0 0 20 18" fill="none" focusable="false">
+                    <path
+                      d="M3 4H10C12.2091 4 14 5.79086 14 8V15M14 15L9.5 10.5M14 15L18.5 10.5"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+              </span>
+            </div>
+
+            <h3 className="how-lead">Você escolhe o que fica visível.</h3>
+            <p className="how-description">
+              Adicione a imagem, selecione o que deseja ocultar e confirme. Revise o resultado antes de compartilhar.
+            </p>
+            <p className="how-flow">
+              <span className="how-flow__step">Adicione.</span>{' '}
+              <span className="how-flow__step">Oculte.</span>{' '}
+              <span className="how-flow__step">Compartilhe.</span>
+            </p>
+          </div>
+
+          <figure className="how-demo">
+            <div className="how-comparison">
+              <div className="how-example">
+                <p className="how-example__label">
+                  <span>Antes</span>
+                  <small>Imagem original</small>
+                </p>
+                <img
+                  className="how-example__capture"
+                  src="/demo-original.png"
+                  alt="Conversa fictícia de atendimento com e-mail e telefone visíveis."
+                  width={400}
+                  height={440}
+                  loading="lazy"
+                />
+              </div>
+              <div className="how-example">
+                <p className="how-example__label">
+                  <span>Depois</span>
+                  <small>No Tampei</small>
+                </p>
+                <img
+                  className="how-example__capture"
+                  src="/demo-protected.png"
+                  alt="A mesma conversa, com tarjas pretas sobre o e-mail e o telefone."
+                  width={400}
+                  height={440}
+                  loading="lazy"
+                />
+              </div>
+            </div>
+            <figcaption className="how-demo__caption">
+              Conversa fictícia. Ocultações manuais no Tampei.
+            </figcaption>
+          </figure>
+        </div>
       </section>
 
       <section id="privacidade" className="public-section public-section--privacy" aria-labelledby="privacy-title">
         <h2 id="privacy-title">Privacidade no navegador</h2>
         <div className="public-prose">
-          <p>A edição acontece localmente no seu navegador, sem upload do screenshot para a aplicação. Você escolhe manualmente onde colocar tarjas para ocultar dados em prints ou imagens e revisa o resultado antes de compartilhar.</p>
-          <p>A imagem fica temporariamente na memória durante a edição. A ferramenta não salva screenshots; downloads e conteúdo copiado são gerenciados pelo seu dispositivo e navegador. A hospedagem entrega os arquivos da aplicação e pode registrar dados técnicos de navegação, sem receber o screenshot editado.</p>
+          <p>A edição acontece localmente no seu navegador, sem upload do screenshot para a aplicação. Você seleciona manualmente o que deseja ocultar e revisa o resultado antes de compartilhar.</p>
+          <p>A imagem fica temporariamente na memória durante a edição e não é salva em conta ou banco de dados. Downloads e conteúdo copiado são gerenciados pelo seu navegador e dispositivo. A hospedagem entrega os arquivos da aplicação e pode registrar dados técnicos de navegação, sem receber o screenshot editado.</p>
         </div>
       </section>
 

@@ -51,6 +51,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 *,
 *::before,
 *::after {
@@ -284,6 +288,7 @@ kbd {
   border: 1.5px dashed var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--surface);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.07);
   transition:
     border-color var(--duration) var(--ease),
     background-color var(--duration) var(--ease),
@@ -397,43 +402,162 @@ kbd {
   letter-spacing: -0.015em;
 }
 
-.how-steps {
+.public-section--how {
+  padding: 48px 0 64px;
+}
+
+.how-layout {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 28px;
+  grid-template-columns: minmax(252px, 284px) minmax(0, 1fr);
+  gap: 32px;
+  align-items: center;
+}
+
+.how-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.how-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.how-header h2 {
   margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: step;
+  white-space: nowrap;
 }
 
-.how-steps li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-content: start;
-  align-items: baseline;
-  gap: 8px 10px;
+.how-arrow {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 44px;
 }
 
-.how-steps li::before {
-  counter-increment: step;
-  content: '0' counter(step);
+.how-arrow__line {
+  flex: 1 1 auto;
+  height: 0;
+  border-top: 1.5px dashed var(--border-strong);
+}
+
+.how-arrow__badge {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 32px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.08);
+}
+
+.how-arrow__icon--mobile {
+  display: none;
+}
+
+.how-lead {
+  max-width: 15.5ch;
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.62rem, 1.38rem + 0.8vw, 1.92rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+
+.how-description {
+  margin: 16px 0 0;
   color: var(--text-secondary);
-  font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
-.how-steps h3 {
-  margin: 0;
-  font-size: 1.06rem;
+.how-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 0;
+}
+
+.how-flow__step {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.84rem;
   font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.07);
 }
 
-.how-steps p {
-  grid-column: 2;
+.how-demo {
+  margin: 0;
+  min-width: 0;
+  padding: 22px 20px 16px;
+  border-radius: 18px;
+  background: var(--workspace);
 }
 
-.how-steps p,
+.how-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.how-example {
+  margin: 0;
+  min-width: 0;
+}
+
+.how-example__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 8px;
+  padding-inline: 2px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.how-example__label small {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 450;
+  letter-spacing: 0;
+}
+
+.how-example__capture {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  border: 1px solid #d9d9dd;
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.how-demo__caption {
+  margin-top: 14px;
+  color: #56565b;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .public-prose,
 .faq__answer {
   color: var(--text-secondary);
@@ -905,6 +1029,10 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   *,
   *::before,
   *::after {
@@ -965,6 +1093,52 @@ kbd {
   .brand--compact .brand__name {
     display: none;
   }
+
+  .public-section--how {
+    padding: 36px 0 44px;
+  }
+
+  .how-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .how-copy {
+    max-width: 34rem;
+  }
+
+  .how-header {
+    margin-bottom: 14px;
+  }
+
+  .how-arrow {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  .how-arrow__line {
+    display: none;
+  }
+
+  .how-arrow__icon--desktop {
+    display: none;
+  }
+
+  .how-arrow__icon--mobile {
+    display: block;
+  }
+
+  .how-lead {
+    max-width: none;
+  }
+
+  .how-description {
+    margin-top: 12px;
+  }
+
+  .how-flow {
+    margin-top: 16px;
+  }
 }
 
 @media (max-width: 600px) {
@@ -974,20 +1148,94 @@ kbd {
   }
 
   .public-section {
-    padding: 32px 0;
+    padding: 28px 0;
   }
 
-  .how-steps {
-    grid-template-columns: 1fr;
-    gap: 24px;
+  .public-section h2 {
+    margin-bottom: 14px;
+    font-size: 1.28rem;
+  }
+
+  .public-section--how {
+    padding: 26px 0 32px;
+  }
+
+  .how-layout {
+    gap: 16px;
+  }
+
+  .how-header {
+    margin-bottom: 10px;
+  }
+
+  .how-header h2 {
+    margin-bottom: 0;
+  }
+
+  .how-lead {
+    font-size: clamp(1.45rem, 5.6vw, 1.65rem);
+    line-height: 1.14;
+  }
+
+  .how-description {
+    margin-top: 10px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .how-flow {
+    gap: 6px;
+    margin-top: 14px;
+  }
+
+  .how-flow__step {
+    padding: 4px 10px;
+    font-size: 0.8125rem;
+  }
+
+  .how-demo {
+    padding: 14px 12px 12px;
+    border-radius: 14px;
+  }
+
+  .how-comparison {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .how-example {
+    width: 100%;
+    max-width: 400px;
+    margin-inline: auto;
+  }
+
+  .how-example__label {
+    margin-bottom: 6px;
+    font-size: 0.875rem;
+  }
+
+  .how-demo__caption {
+    margin-top: 10px;
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .public-prose,
+  .faq__answer {
+    font-size: 0.95rem;
+    line-height: 1.58;
+  }
+
+  .public-prose p + p {
+    margin-top: 12px;
   }
 
   .public-section--privacy {
-    padding: 24px 20px;
+    padding: 20px 18px;
   }
 
   .public-section--privacy + .public-section {
-    padding-top: 40px;
+    padding-top: 32px;
   }
 }
 
