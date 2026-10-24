@@ -58,6 +58,7 @@ export default function App() {
   const activeTouches = useRef(new Set<number>())
   const touchGestureBlocked = useRef(false)
   const loadSequence = useRef(0)
+  const exportSession = useRef(0)
   const [image, setImage] = useState<ImageBitmap | null>(null)
   const [moving, setMoving] = useState(false)
   const [gestureActive, setGestureActive] = useState(false)
@@ -67,18 +68,29 @@ export default function App() {
   const [selectedRedaction, setSelectedRedaction] = useState<number | null>(null)
   const [draggingFile, setDraggingFile] = useState(false)
   const [status, setStatus] = useState<Status>({ text: '', tone: 'info' })
+  const [downloadHelpAvailable, setDownloadHelpAvailable] = useState(false)
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const pendingActionRef = useRef<PendingAction | null>(null)
 
   const setMessage = useCallback((text: string, tone: StatusTone = 'info') => {
     setStatus({ text, tone })
+    setDownloadHelpAvailable(false)
   }, [])
 
   // Retorno de copiar/baixar: aparece junto aos botões que o originaram.
   // Qualquer mensagem posterior do editor o substitui, como antes.
   const setExportMessage = useCallback((text: string, tone: StatusTone, downloadRequested = false) => {
-    setStatus({ text, tone, downloadRequested, scope: 'export' })
+    setStatus({ text, tone, scope: 'export' })
+    setDownloadHelpAvailable(downloadRequested)
   }, [])
+
+  useEffect(() => {
+    if (status.scope !== 'export' || status.tone !== 'success') return
+    const timer = window.setTimeout(() => {
+      setStatus((current) => current === status ? { text: '', tone: 'info' } : current)
+    }, 5000)
+    return () => window.clearTimeout(timer)
+  }, [status])
 
   const cancelSelection = useCallback(() => {
     const drag = selectionDrag.current
@@ -165,6 +177,7 @@ export default function App() {
   }, [])
 
   const commitImage = useCallback((bitmap: ImageBitmap) => {
+    exportSession.current += 1
     cancelActiveGesture()
     navigationTouches.current.clear()
     setGestureActive(false)
@@ -178,6 +191,7 @@ export default function App() {
   }, [cancelActiveGesture, setMessage, updateHistory])
 
   const clearEditor = useCallback(() => {
+    exportSession.current += 1
     cancelActiveGesture()
     navigationTouches.current.clear()
     setGestureActive(false)
@@ -190,6 +204,7 @@ export default function App() {
     selectionDrag.current = null
     setDraggingFile(false)
     setStatus({ text: '', tone: 'info' })
+    setDownloadHelpAvailable(false)
   }, [cancelActiveGesture, updateHistory])
 
   const requestImage = useCallback(async (file: File) => {
@@ -297,6 +312,7 @@ export default function App() {
 
   useEffect(() => () => {
     loadSequence.current += 1
+    exportSession.current += 1
     const action = pendingActionRef.current
     if (action?.kind === 'replace') action.bitmap.close()
     const drag = selectionDrag.current ?? panDrag.current
@@ -495,6 +511,7 @@ export default function App() {
 
   const performCopy = async () => {
     if (!image) return
+    const session = exportSession.current
     if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
       setExportMessage('Este navegador não permite copiar imagens aqui. Use “Baixar PNG”.', 'error')
       return
@@ -502,21 +519,28 @@ export default function App() {
     try {
       const png = exportPng(image, history.applied)
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
+      // A solicitação nativa já foi feita; uma sessão antiga não atualiza a UI.
+      if (session !== exportSession.current) return
       setExportMessage(history.applied.length > 0 ? 'Imagem com ocultações copiada.' : 'Imagem copiada sem ocultações.', 'success')
     } catch {
+      if (session !== exportSession.current) return
       setExportMessage('Não foi possível copiar. Verifique a permissão da área de transferência ou use “Baixar PNG”.', 'error')
     }
   }
 
   const performDownload = async () => {
     if (!image) return
+    const session = exportSession.current
     let png: Blob
     try {
       png = await exportPng(image, history.applied)
     } catch {
+      if (session !== exportSession.current) return
       setExportMessage('Não foi possível gerar o PNG desta imagem.', 'error')
       return
     }
+
+    if (session !== exportSession.current) return
 
     let url: string | null = null
     let link: HTMLAnchorElement | null = null
@@ -541,6 +565,7 @@ export default function App() {
 
   const onCopy = () => {
     if (!image) return
+    setDownloadHelpAvailable(false)
     if (history.applied.length === 0) {
       returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
       showPendingAction({ kind: 'export', format: 'copy' })
@@ -583,6 +608,7 @@ export default function App() {
             onNewImage={onNewImage}
             newImageButtonRef={newImageButtonRef}
             exportStatus={status.scope === 'export' ? status : null}
+            downloadHelpAvailable={downloadHelpAvailable}
           />
 
           <main className="workspace">

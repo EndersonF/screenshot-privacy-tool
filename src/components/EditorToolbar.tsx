@@ -21,6 +21,7 @@ type EditorToolbarProps = {
   newImageButtonRef: RefObject<HTMLButtonElement | null>
   /** Retorno da última cópia ou download; `null` quando outra mensagem o substituiu. */
   exportStatus: Status | null
+  downloadHelpAvailable: boolean
 }
 
 export function EditorToolbar({
@@ -39,6 +40,7 @@ export function EditorToolbar({
   onNewImage,
   newImageButtonRef,
   exportStatus,
+  downloadHelpAvailable,
 }: EditorToolbarProps) {
   const showReview = hasRedactions && !exportStatus
   return (
@@ -112,20 +114,23 @@ export function EditorToolbar({
               Copiar imagem protegida
             </button>
           </div>
-          {exportStatus ? (
+          {(exportStatus || showReview || downloadHelpAvailable) && (
             // Usa o espaço já reservado para a revisão. O anúncio continua
             // somente na região role="status" do App; este texto é visual.
             <div className="export-feedback">
-              <Feedback status={exportStatus} />
-              {exportStatus.downloadRequested && (
+              <div className={`export-feedback__message${exportStatus ? ' export-feedback__message--notice' : ''}`}>
+                {exportStatus && <Feedback status={exportStatus} />}
+                {showReview && (
+                  <p id="export-hint" className="export-hint">Antes de compartilhar, confira se ocultou todas as informações necessárias.</p>
+                )}
+              </div>
+              {downloadHelpAvailable && (
                 <details className="download-help">
                   <summary>Não encontrou o arquivo?</summary>
                   <p>Confira a pasta de downloads definida pelo navegador. No iPhone, procure na lista de downloads do Safari ou no app Arquivos. O PNG não aparece automaticamente no Fotos.</p>
                 </details>
               )}
             </div>
-          ) : showReview && (
-            <p id="export-hint" className="export-hint">Antes de compartilhar, confira se ocultou todas as informações necessárias.</p>
           )}
         </div>
       </div>

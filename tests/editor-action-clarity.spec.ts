@@ -182,7 +182,7 @@ for (const { width, height } of [
     await expect(page.locator('.export-feedback .feedback__text')).toHaveText('Download do PNG com ocultações solicitado ao navegador.')
     await expect(page.locator('.export-hint')).toHaveCount(0)
     await page.getByRole('button', { name: 'Desfazer', exact: true }).click()
-    await expect(page.locator('.export-feedback')).toHaveCount(0)
+    await expect(page.locator('.export-feedback .feedback')).toHaveCount(0)
     await expect(page.locator('.export-hint')).toHaveText(REVIEW)
   })
 }
