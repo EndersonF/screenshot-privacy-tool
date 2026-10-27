@@ -6,7 +6,7 @@
 
 A edição acontece inteiramente no seu navegador, sem envio da imagem para nenhum servidor. O projeto é gratuito, de código aberto e não exige cadastro nem instalação.
 
-[Abrir a aplicação](https://screenshot-privacy-tool.pages.dev)
+[Abrir a aplicação](https://tampei.endersonfrazao.com/)
 
 ## Por que criei o Tampei?
 
