@@ -94,13 +94,13 @@ test('metadados de SEO, Open Graph e Twitter Cards estão configurados', async (
   )
 
   const canonical = page.locator('link[rel="canonical"]')
-  await expect(canonical).toHaveAttribute('href', 'https://screenshot-privacy-tool.pages.dev/')
+  await expect(canonical).toHaveAttribute('href', 'https://tampei.endersonfrazao.com/')
 
   const ogTitle = page.locator('meta[property="og:title"]')
   await expect(ogTitle).toHaveAttribute('content', 'Tampei | Oculte informações em prints e screenshots')
 
   const ogUrl = page.locator('meta[property="og:url"]')
-  await expect(ogUrl).toHaveAttribute('content', 'https://screenshot-privacy-tool.pages.dev/')
+  await expect(ogUrl).toHaveAttribute('content', 'https://tampei.endersonfrazao.com/')
 
   const twitterCard = page.locator('meta[name="twitter:card"]')
   await expect(twitterCard).toHaveAttribute('content', 'summary')
@@ -114,12 +114,12 @@ test('robots.txt e sitemap.xml são servidos corretamente', async ({ request }) 
   expect(robots.status()).toBe(200)
   const robotsText = await robots.text()
   expect(robotsText).toContain('User-agent: *')
-  expect(robotsText).toContain('Sitemap: https://screenshot-privacy-tool.pages.dev/sitemap.xml')
+  expect(robotsText).toContain('Sitemap: https://tampei.endersonfrazao.com/sitemap.xml')
 
   const sitemap = await request.get('/sitemap.xml')
   expect(sitemap.status()).toBe(200)
   const sitemapText = await sitemap.text()
-  expect(sitemapText).toContain('<loc>https://screenshot-privacy-tool.pages.dev/</loc>')
+  expect(sitemapText).toContain('<loc>https://tampei.endersonfrazao.com/</loc>')
   expect(sitemapText).not.toContain('<changefreq>')
   expect(sitemapText).not.toContain('<priority>')
 })

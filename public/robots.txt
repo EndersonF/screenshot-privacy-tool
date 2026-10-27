@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://screenshot-privacy-tool.pages.dev/sitemap.xml
+Sitemap: https://tampei.endersonfrazao.com/sitemap.xml
